@@ -1,0 +1,55 @@
+/* ==== Minimal rounded variant pills (like your screenshot) ===== */
+.pd .pd-variants{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+/* base pill */
+.pd .pd-variant-pill{
+  appearance:none; -webkit-appearance:none;
+  border-radius:999px;
+  padding:10px 18px;
+  border:1px solid #e5e7eb;       /* subtle light border */
+  background:#f7f7f7;             /* soft gray bg */
+  color:#374151;                  /* slate-700 text */
+  font-weight:700;
+  line-height:1;
+  cursor:pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease, transform .1s ease;
+}
+
+/* hover (unselected) */
+.pd .pd-variant-pill:hover{
+  background:#f1f1f1;
+  transform: translateY(-1px);
+}
+
+/* selected state */
+.pd .pd-variant-pill[aria-pressed="true"]{
+  background:#2f2f2f;             /* charcoal */
+  border-color:#2f2f2f;
+  color:#fff;                      /* white text */
+  box-shadow:none;
+}
+
+/* hover (selected) */
+.pd .pd-variant-pill[aria-pressed="true"]:hover{
+  background:#262626;
+  border-color:#262626;
+}
+
+/* disabled (out of stock) */
+.pd .pd-variant-pill:disabled,
+.pd .pd-variant-pill[disabled]{
+  background:#fafafa;
+  color:#9ca3af;
+  border-color:#ededed;
+  cursor:not-allowed;
+  transform:none;
+}
+
+/* small screens */
+@media (max-width:480px){
+  .pd .pd-variant-pill{ padding:9px 16px; }
+}

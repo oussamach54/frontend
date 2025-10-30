@@ -1,0 +1,140 @@
+/* =========================================================
+   Navbar with transparent-on-scroll effect
+   Uses your global typography variables
+   ========================================================= */
+
+/* ---------- THEME VARS ---------- */
+:root {
+  --navbar-bg: #fedfdf;            /* solid top color */
+  --navbar-text: #222222;
+  --navbar-hover: #ec6a84;
+  --navbar-border: rgba(0, 0, 0, 0.08);
+
+  /* Scrolled (translucent) look */
+  --navbar-bg-scrolled: rgba(251, 220, 220, 0.78);
+  --navbar-shadow-scrolled: 0 10px 30px rgba(0, 0, 0, 0.10);
+  --navbar-blur: saturate(180%) blur(12px);
+}
+
+/* ---------- WRAPPER (sticky) ---------- */
+.navstrip-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 101; /* above page content but below brandbar if needed */
+}
+
+/* ---------- NAVBAR ---------- */
+.custom-navbar {
+  background: var(--navbar-bg);
+  color: var(--navbar-text);
+  border-bottom: 1px solid var(--navbar-border);
+  transition: background 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+  font-family: var(--font-sans);
+  letter-spacing: 0.3px;
+  min-height: 58px;
+}
+
+/* When scrolled: translucent + blur + shadow */
+.custom-navbar.is-scrolled {
+  background: var(--navbar-bg-scrolled);
+  backdrop-filter: var(--navbar-blur);
+  -webkit-backdrop-filter: var(--navbar-blur);
+  box-shadow: var(--navbar-shadow-scrolled);
+  border-bottom-color: transparent;
+}
+
+/* ---------- LINKS ---------- */
+.nav-link-upp {
+  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  color: var(--navbar-text) !important;
+  letter-spacing: 0.7px;
+  font-size: 0.93rem;
+  margin: 0 12px;
+  transition: color 0.25s ease, transform 0.2s ease;
+  position: relative;
+}
+
+.nav-link-upp::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -2px;
+  height: 2px;
+  background: var(--navbar-hover);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.25s ease;
+}
+
+.nav-link-upp:hover::after,
+.nav-link-upp:focus::after {
+  transform: scaleX(1);
+}
+
+.nav-link-upp:hover,
+.nav-link-upp:focus {
+  color: var(--navbar-hover) !important;
+  transform: translateY(-1px);
+}
+
+/* ---------- DROPDOWN ---------- */
+.dropdown-menu {
+  border-radius: 8px;
+  border: 1px solid var(--navbar-border);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
+  font-family: var(--font-sans);
+}
+
+.dropdown-item {
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background: var(--navbar-hover);
+  color: #fff !important;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 992px) {
+  .nav-link-upp {
+    margin: 8px 0;
+    display: block;
+    text-align: center;
+  }
+}
+/* --- header stacking + overflow --- */
+.brandbar,
+.brandbar-inner,
+.custom-navbar {
+  position: sticky;        /* both bars are sticky */
+  overflow: visible;       /* never clip the dropdown */
+}
+
+/* your brandbar already sticky at top:0; keep it above navbar */
+.brandbar { z-index: 1000; top: 0; }
+
+/* navbar sits under the brandbar */
+.custom-navbar { z-index: 900; }
+
+/* --- dropdown should always be above both bars --- */
+.brand-user-menu,
+.dropdown-menu {
+  position: absolute;      /* Bootstrap already does this; safe to repeat */
+  z-index: 5000 !important;
+}
+
+/* if your header container created a stacking context by mistake */
+.brandbar-logo,
+.brandbar-icons,
+.brandbar-left {
+  overflow: visible;
+}
+
+/* (optional) in case any parent set overflow on Container */
+.brandbar .container,
+.custom-navbar .container {
+  overflow: visible;
+}

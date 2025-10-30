@@ -1,0 +1,127 @@
+/* =========================================================
+   BrandBar — White at top, Transparent on scroll
+   ========================================================= */
+
+/* ---------- CONFIG ---------- */
+:root {
+  --header-bg: rgba(255, 255, 255, 1);  /* clean white */
+  --header-bg-scrolled: rgba(250, 234, 234, 0.7); /* transparent fade */
+  --header-blur: 10px;
+  --header-height: 72px;
+  --header-border: 1px solid rgba(0, 0, 0, 0.05);
+
+  --logo-h: 140px;
+  --logo-w: auto;
+  --logo-scale: 1;
+}
+
+/* ---------- Base Bar ---------- */
+.brandbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--header-bg);
+  border-bottom: var(--header-border);
+  transition: all 0.35s ease;
+}
+
+/* When scrolled */
+.brandbar.scrolled {
+  background: var(--header-bg-scrolled);
+  backdrop-filter: blur(var(--header-blur));
+  -webkit-backdrop-filter: blur(var(--header-blur));
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Inner layout */
+.brandbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-height);
+  gap: 12px;
+}
+
+.brandbar-left {
+  flex: 1 1 0;
+}
+
+.brandbar-icons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1 1 0;
+  justify-content: flex-end;
+}
+
+/* ---------- Logo ---------- */
+.brandbar-logo {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  height: var(--header-height);
+  overflow: visible;
+}
+
+.brand-logo-link {
+  position: relative;
+  display: block;
+}
+
+.brand-logo-img {
+  height: var(--logo-h);
+  width: var(--logo-w);
+  object-fit: contain;
+  transform: scale(var(--logo-scale));
+  transition: transform 0.2s ease;
+}
+
+.brandbar.scrolled .brand-logo-img {
+  transform: scale(0.9); /* slightly shrink when scrolling */
+}
+
+/* ---------- Icons ---------- */
+.icon-link {
+  position: relative;
+  font-size: 20px;
+  color: #3a3a3a;
+  transition: color 0.3s ease;
+}
+.icon-link:hover {
+  color: #000;
+}
+
+.icon-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  background: #ffd3dc;
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+/* ---------- Responsive tweak ---------- */
+@media (max-width: 576px) {
+  :root {
+    --logo-h: 90px;
+  }
+}
+
+/* ===== FORCE WHITE HEADER (wins over any old pink styles) ===== */
+.brandbar {
+  background: #fff !important;            /* white at top */
+  border-bottom: 1px solid rgba(0,0,0,.05);
+}
+
+.brandbar.scrolled {
+  background: rgba(255,255,255,.82) !important; /* frosted when scrolling */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 2px 12px rgba(0,0,0,.05);
+}

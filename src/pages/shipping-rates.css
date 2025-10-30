@@ -1,0 +1,121 @@
+/* src/pages/shipping-rates.css */
+
+.sr-wrap{
+  max-width: 980px;
+  margin: 24px auto 60px;
+  padding: 18px;
+}
+
+.sr-brand{
+  display:flex;
+  justify-content:center;
+  margin-bottom: 10px;
+}
+.sr-brand img{ height: 48px; }
+
+.sr-title{
+  text-align:center;
+  font-weight: 800;
+  letter-spacing:.2px;
+  margin: 4px 0 18px;
+}
+
+.sr-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.sr-toolbar select,
+.sr-toolbar input{
+  border:1px solid rgba(15,23,42,.12);
+  border-radius: 10px;
+  padding: 6px 10px;
+  background: #fff;
+}
+.sr-rows, .sr-search{ font-weight:600; color:#374151; }
+
+.sr-card{
+  background:#fff;
+  border:1px solid rgba(15,23,42,.08);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(16,24,40,.08);
+  overflow:hidden;
+}
+
+.sr-table-wrap{
+  max-height: 64vh;           /* scroll si très long */
+  overflow:auto;
+}
+
+.sr-table{
+  width:100%;
+  border-collapse:collapse;
+}
+.sr-table thead th{
+  position: sticky;
+  top:0;
+  background:#f7fafc;
+  z-index:1;
+  text-align:left;
+  font-weight:800;
+  color:#111827;
+  padding: 12px 14px;
+  border-bottom:1px solid rgba(15,23,42,.08);
+}
+.sr-table tbody td{
+  padding: 12px 14px;
+  border-bottom:1px solid rgba(15,23,42,.06);
+}
+.sr-table tbody tr:nth-child(odd){
+  background: #fbfdff;
+}
+.sr-table tbody tr:hover{
+  background: #f2f7ff;
+}
+
+.sr-empty{
+  text-align:center;
+  padding: 24px;
+  color:#6b7280;
+  font-weight:600;
+}
+.sr-error{
+  color:#a22020;
+  text-align:center;
+  padding: 18px;
+  font-weight:700;
+}
+
+.sr-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding: 12px 0;
+  color:#374151;
+}
+.sr-count{ font-size:.95rem; }
+
+.sr-pager{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.sr-pager button{
+  border:1px solid rgba(15,23,42,.12);
+  background:#fff;
+  padding:6px 10px;
+  border-radius:10px;
+  cursor:pointer;
+}
+.sr-pager button:hover{ background:#f4f7fb; }
+.sr-pager button.is-active{
+  background:#111827;
+  color:#fff;
+  border-color:#111827;
+}
+.sr-pager button:disabled{ opacity:.5; cursor:not-allowed; }
+.sr-dots{ padding:0 6px; }

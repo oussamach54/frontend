@@ -1,0 +1,33 @@
+/* src/pages/checkout.css */
+.co-wrap{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:32px;max-width:1100px;margin:24px auto}
+.co-left{padding:8px}
+.co-right{position:sticky; top:90px; height:fit-content}
+.co-title{font-size:22px;margin:18px 0 10px 0;font-weight:800}
+.co-field{display:flex;flex-direction:column;margin-bottom:12px}
+.co-field label{font-size:.9rem;color:#334155;margin-bottom:6px}
+.co-field input{border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px}
+.co-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.co-block{border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin:16px 0;background:#fff}
+.co-block-title{font-weight:700;margin-bottom:10px}
+.co-ship-list{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow:auto}
+.co-ship-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #e5e7eb;border-radius:10px;padding:12px}
+.co-ship-row.is-active{border-color:#111827;background:#f9fafb}
+.co-ship-city{font-weight:600}
+.co-ship-price{font-weight:700}
+.co-pay-row{display:flex;gap:12px;align-items:flex-start}
+.co-pay-title{font-weight:700}
+.co-pay-help{color:#6b7280;font-size:.95rem;margin-top:2px}
+.co-submit{margin-top:18px;background:#111827;color:#fff;border:none;border-radius:10px;padding:12px 16px;font-weight:700}
+.co-legal{margin-top:10px;color:#64748b;font-size:.9rem}
+.co-summary{border:1px solid #e5e7eb;border-radius:16px;padding:16px;background:#fff}
+.co-empty{color:#64748b;text-align:center;padding:16px}
+.co-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;max-height:320px;overflow:auto}
+.co-item{display:flex;align-items:center;gap:12px}
+.co-item img{width:56px;height:56px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb}
+.co-item-info{flex:1}
+.co-item-name{font-weight:700}
+.co-item-variant,.co-item-qty{color:#6b7280;font-size:.9rem}
+.co-item-price{font-weight:700}
+.co-line{display:flex;justify-content:space-between;margin-top:12px;color:#374151}
+.co-total{display:flex;justify-content:space-between;margin-top:12px;font-size:1.1rem;font-weight:800}
+@media (max-width: 992px){.co-wrap{grid-template-columns:1fr}}

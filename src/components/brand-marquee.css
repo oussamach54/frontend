@@ -1,0 +1,85 @@
+/* ================================
+   Brand Marquee – Elegant Style
+   ================================ */
+
+.bm-wrap {
+  padding: 48px 0 56px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.bm-title {
+  text-align: center;
+  font-weight: 800;
+  margin-bottom: 24px;
+  font-size: clamp(22px, 2.4vw, 34px);
+  color: #111827;
+  font-family: "Playfair Display", serif; /* elegant serif font */
+  letter-spacing: 0.5px;
+}
+
+.bm-rail {
+  position: relative;
+  overflow: hidden;
+}
+
+.bm-track {
+  display: flex;
+  align-items: center;
+  gap: 60px;
+  width: max-content;
+  animation: bm-slide 24s linear infinite; /* smooth normal speed */
+  padding: 10px 0;
+}
+
+.bm-card {
+  min-width: 180px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  transition: transform 0.25s ease, opacity 0.25s ease, filter 0.25s ease;
+  filter: grayscale(80%);
+  opacity: 0.85;
+}
+
+.bm-card:hover {
+  transform: scale(1.05);
+  filter: grayscale(0%);
+  opacity: 1;
+}
+
+/* If logo available */
+.bm-card img {
+  max-height: 56px;
+  max-width: 200px;
+  object-fit: contain;
+}
+
+/* Text fallback style */
+.bm-text {
+  font-size: clamp(26px, 2.6vw, 36px);  /* a little bigger */
+  font-style: italic;                  /* stylish italic font */
+  font-weight: 400;                    /* not bold */
+  color: #1e293b;
+  font-family: "Playfair Display", serif;
+  letter-spacing: 0.6px;
+  transition: color 0.25s ease, transform 0.25s ease;
+}
+
+.bm-card:hover .bm-text {
+  color: #ec4899; /* soft pink accent on hover */
+  transform: scale(1.04);
+}
+
+/* Motion animation */
+@keyframes bm-slide {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .bm-track { gap: 40px; }
+  .bm-card { min-width: 140px; height: 60px; }
+  .bm-text { font-size: 24px; }
+}

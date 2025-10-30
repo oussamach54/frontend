@@ -1,0 +1,65 @@
+.bp-wrap { padding: 2rem 0; }
+.bp-title { font-weight: 900; margin-bottom: 1rem; }
+.bp-toolbar {
+  display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-bottom: 1rem;
+}
+.bp-search {
+  min-width: 260px; padding: .6rem .8rem; border: 1px solid #e5e7eb; border-radius: .6rem;
+}
+.bp-letters { display: flex; flex-wrap: wrap; gap: .25rem; }
+.bp-letter {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2rem; height: 2rem; border: 1px solid #e5e7eb; border-radius: .5rem;
+  font-weight: 700; color: #111827; text-decoration: none;
+}
+.bp-section { margin-top: 1.25rem; }
+.bp-section-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+.bp-letter-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.25rem; height: 2.25rem; border-radius: 9999px; background: #f3f4f6; font-weight: 800;
+}
+.bp-grid {
+  list-style: none; padding: 0; margin: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .75rem;
+}
+.bp-brand {
+  display: block; border: 1px solid #eee; border-radius: .9rem; padding: 1.2rem;
+  text-decoration: none; background: #fff; transition: box-shadow .15s, transform .1s;
+}
+.bp-brand:hover { transform: translateY(-1px); box-shadow: 0 10px 25px rgba(0,0,0,.06); }
+.bp-brand-name { font-size: 1.1rem; font-weight: 800; letter-spacing: .2px; color: #111827; }
+
+.bp-empty, .bp-error { padding: 1rem; color: #6b7280; }
+/* --- header stacking + overflow --- */
+.brandbar,
+.brandbar-inner,
+.custom-navbar {
+  position: sticky;        /* both bars are sticky */
+  overflow: visible;       /* never clip the dropdown */
+}
+
+/* your brandbar already sticky at top:0; keep it above navbar */
+.brandbar { z-index: 1000; top: 0; }
+
+/* navbar sits under the brandbar */
+.custom-navbar { z-index: 900; }
+
+/* --- dropdown should always be above both bars --- */
+.brand-user-menu,
+.dropdown-menu {
+  position: absolute;      /* Bootstrap already does this; safe to repeat */
+  z-index: 5000 !important;
+}
+
+/* if your header container created a stacking context by mistake */
+.brandbar-logo,
+.brandbar-icons,
+.brandbar-left {
+  overflow: visible;
+}
+
+/* (optional) in case any parent set overflow on Container */
+.brandbar .container,
+.custom-navbar .container {
+  overflow: visible;
+}
