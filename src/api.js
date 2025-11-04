@@ -1,31 +1,66 @@
 // src/api.js
 import axios from "axios";
 
-const RAW = process.env.REACT_APP_API_URL || ""; // same origin unless overridden
+/**
+ * Base URL:
+ * - Same origin by default (""), so /api/... is proxied in dev.
+ * - To call a different origin, set REACT_APP_API_URL, e.g. "https://api.miniglowbyshay.cloud".
+ */
+const RAW = process.env.REACT_APP_API_URL || "";
 const BASE = RAW.replace(/\/+$/, "");
 
+// localStorage keys
 const ACCESS_KEY = "access";
 const REFRESH_KEY = "refresh";
 
+// Endpoints that are PUBLIC (no auth header, and safe to retry without it)
+const PUBLIC_GET_PATHS = [
+  /^\/api\/products\/?$/i,
+  /^\/api\/brands\/?$/i,
+  /^\/api\/product\/\d+\/?$/i,
+  /^\/api\/shipping-rates\/?$/i,            // product app
+  /^\/payments\/shipping-rates\/?$/i,       // payments app
+];
+
+// Helpers
+const isLikelyJwt = (t) => typeof t === "string" && t.split(".").length === 3;
+const isPublicGet = (config) => {
+  if ((config.method || "get").toLowerCase() !== "get") return false;
+  // Normalize URL path (strip base)
+  let path = config.url || "";
+  if (BASE && path.startsWith(BASE)) path = path.slice(BASE.length);
+  // Ensure it starts with '/'
+  if (path.charAt(0) !== "/") path = `/${path}`;
+  return PUBLIC_GET_PATHS.some((re) => re.test(path));
+};
+
+// Create a single axios instance used everywhere
 const api = axios.create({
   baseURL: BASE,
   timeout: 20000,
 });
 
-// helper: is token string clearly unusable?
-const looksBad = (t) =>
-  !t || t === "undefined" || t === "null" || typeof t !== "string" || t.split(".").length < 3;
-
-// attach Authorization if we have a token that at least “looks” like a JWT
+// Attach Authorization when appropriate
 api.interceptors.request.use((config) => {
+  // Don’t send auth on public GETs
+  if (isPublicGet(config)) {
+    if (config.headers?.Authorization) delete config.headers.Authorization;
+    return config;
+  }
+
   const token =
-    localStorage.getItem(ACCESS_KEY) || localStorage.getItem("token");
-  if (token && !looksBad(token)) {
+    localStorage.getItem(ACCESS_KEY) || localStorage.getItem("token"); // keep legacy key
+
+  if (token && isLikelyJwt(token)) {
+    config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   } else {
-    // ensure we don't send a broken header
-    delete config.headers.Authorization;
+    // bad/old token in storage → remove it to avoid 401 on public routes
+    localStorage.removeItem(ACCESS_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+    localStorage.removeItem("token");
   }
+
   return config;
 });
 
@@ -46,92 +81,80 @@ api.interceptors.response.use(
   async (err) => {
     const { config, response } = err;
 
-    // If there is no response (network), pass through
-    if (!response) return Promise.reject(err);
+    // If we got a 401 because the token is invalid, clear tokens and retry once
+    const body = response?.data;
+    const detail = body?.detail || body?.message || "";
+    const isInvalidToken =
+      response?.status === 401 &&
+      typeof detail === "string" &&
+      detail.toLowerCase().includes("token not valid");
 
-    const is401 = response.status === 401;
-
-    // If we already retried without auth, or it's not 401, just reject
-    if (!is401 && !config.__retriedNoAuth) return Promise.reject(err);
-
-    // If it's the “token not valid” error from SimpleJWT -> clear tokens and retry GET *once* without auth
-    const msg =
-      response?.data?.detail ||
-      response?.data?.code ||
-      response?.data?.messages?.[0]?.message ||
-      "";
-
-    const tokenInvalid =
-      String(msg).includes("token_not_valid") ||
-      String(msg).includes("Given token not valid");
-
-    if (is401 && tokenInvalid && !config.__retriedNoAuth) {
-      // blow away tokens
+    if (isInvalidToken) {
+      // clear and optionally retry public GET without auth
       localStorage.removeItem(ACCESS_KEY);
       localStorage.removeItem(REFRESH_KEY);
+      localStorage.removeItem("token");
 
-      // retry once with no Authorization header
-      const noAuth = { ...config, headers: { ...(config.headers || {}) } };
-      delete noAuth.headers.Authorization;
-      noAuth.__retriedNoAuth = true;
-
-      try {
-        return await api(noAuth);
-      } catch (e) {
-        return Promise.reject(e);
+      if (!config.__retriedWithoutAuth && isPublicGet(config)) {
+        const clone = { ...config, __retriedWithoutAuth: true };
+        if (clone.headers?.Authorization) delete clone.headers.Authorization;
+        return api(clone);
       }
+      return Promise.reject(err);
     }
 
-    // Regular refresh flow for expired-but-refreshable access tokens
-    if (is401 && !config.__isRetryRequest) {
-      const refresh = localStorage.getItem(REFRESH_KEY);
-      if (!refresh) return Promise.reject(err);
+    // Normal refresh flow for expired access token
+    const is401 = response?.status === 401;
+    if (!is401 || config.__isRetryRequest) return Promise.reject(err);
 
-      if (refreshing) {
-        return new Promise((resolve, reject) => {
-          queue.push({
-            resolve: (token) => {
-              config.headers.Authorization = `Bearer ${token}`;
-              config.__isRetryRequest = true;
-              resolve(api(config));
-            },
-            reject,
-          });
+    const refresh = localStorage.getItem(REFRESH_KEY);
+    if (!refresh || !isLikelyJwt(refresh)) return Promise.reject(err);
+
+    if (refreshing) {
+      return new Promise((resolve, reject) => {
+        queue.push({
+          resolve: (token) => {
+            config.headers = config.headers || {};
+            config.headers.Authorization = `Bearer ${token}`;
+            config.__isRetryRequest = true;
+            resolve(api(config));
+          },
+          reject,
         });
-      }
-
-      try {
-        refreshing = true;
-        const { data } = await axios.post(`${BASE}/api/token/refresh/`, { refresh });
-        const newAccess = data?.access;
-        if (!newAccess) throw new Error("No access token from refresh");
-
-        localStorage.setItem(ACCESS_KEY, newAccess);
-        flushQueue(null, newAccess);
-
-        config.headers.Authorization = `Bearer ${newAccess}`;
-        config.__isRetryRequest = true;
-        return api(config);
-      } catch (e) {
-        flushQueue(e, null);
-        localStorage.removeItem(ACCESS_KEY);
-        localStorage.removeItem(REFRESH_KEY);
-        return Promise.reject(e);
-      } finally {
-        refreshing = false;
-      }
+      });
     }
 
-    return Promise.reject(err);
+    try {
+      refreshing = true;
+      const { data } = await axios.post(`${BASE}/api/token/refresh/`, { refresh });
+      const newAccess = data?.access;
+      if (!newAccess) throw new Error("No access token from refresh");
+
+      localStorage.setItem(ACCESS_KEY, newAccess);
+      flushQueue(null, newAccess);
+
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${newAccess}`;
+      config.__isRetryRequest = true;
+      return api(config);
+    } catch (e) {
+      flushQueue(e, null);
+      localStorage.removeItem(ACCESS_KEY);
+      localStorage.removeItem(REFRESH_KEY);
+      localStorage.removeItem("token");
+      return Promise.reject(e);
+    } finally {
+      refreshing = false;
+    }
   }
 );
 
 export default api;
 
+// Optional helpers used by actions
 export const auth = {
   async tokenPair({ username, password }) {
     const { data } = await api.post(`/api/token/`, { username, password });
-    // store for interceptors
     if (data?.access) localStorage.setItem(ACCESS_KEY, data.access);
     if (data?.refresh) localStorage.setItem(REFRESH_KEY, data.refresh);
     return data;
@@ -139,5 +162,6 @@ export const auth = {
   logout() {
     localStorage.removeItem(ACCESS_KEY);
     localStorage.removeItem(REFRESH_KEY);
+    localStorage.removeItem("token");
   },
 };

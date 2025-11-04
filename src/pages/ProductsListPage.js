@@ -1,9 +1,9 @@
 // src/pages/ProductsListPage.js
 import React, { useEffect, useMemo, useState } from "react";
+import api from "../api";
 import { Container, Spinner, Alert } from "react-bootstrap";
 import { useLocation } from "react-router-dom";
 
-import api from "../api";
 import "../components/HomeProducts.css";
 import HomeProductCard from "../components/HomeProductCard";
 
@@ -14,12 +14,12 @@ function useQS() {
 
 export default function ProductsListPage() {
   const qs = useQS();
-  const typeFromURL = (qs.get("type") || "").toLowerCase();
+  const typeFromURL  = (qs.get("type")  || "").toLowerCase();
   const brandFromURL = qs.get("brand") || "";
 
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(null);
   const [q, setQ] = useState("");
 
   useEffect(() => {
@@ -30,29 +30,17 @@ export default function ProductsListPage() {
     api
       .get("/api/products/", {
         params: {
-          type: typeFromURL || undefined,
+          type:  typeFromURL  || undefined,
           brand: brandFromURL || undefined,
         },
       })
-      .then(({ data }) => {
-        if (!alive) return;
-        setProducts(Array.isArray(data) ? data : []);
-      })
-      .catch((e) => {
-        if (!alive) return;
-        setError(e?.response?.data?.detail || e.message);
-      })
-      .finally(() => {
-        if (!alive) return;
-        setLoading(false);
-      });
+      .then(({ data }) => alive && setProducts(Array.isArray(data) ? data : []))
+      .catch((e) => alive && setError(e?.response?.data?.detail || e.message))
+      .finally(() => alive && setLoading(false));
 
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [typeFromURL, brandFromURL]);
 
-  // client-side safety: ensure both filters apply even if API didn’t
   const byType = useMemo(() => {
     if (!typeFromURL) return products;
     return products.filter((p) => {
@@ -71,10 +59,9 @@ export default function ProductsListPage() {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return byBrand;
-    return byBrand.filter(
-      (p) =>
-        (p.name || "").toLowerCase().includes(needle) ||
-        (p.description || "").toLowerCase().includes(needle)
+    return byBrand.filter((p) =>
+      (p.name || "").toLowerCase().includes(needle) ||
+      (p.description || "").toLowerCase().includes(needle)
     );
   }, [byBrand, q]);
 
@@ -109,9 +96,7 @@ export default function ProductsListPage() {
       {!loading && !error && (
         filtered.length ? (
           <div className="hp-grid">
-            {filtered.map((p) => (
-              <HomeProductCard key={p.id} product={p} />
-            ))}
+            {filtered.map((p) => <HomeProductCard key={p.id} product={p} />)}
           </div>
         ) : (
           <div className="text-center text-muted py-5">Aucun produit trouvé.</div>
