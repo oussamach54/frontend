@@ -52,7 +52,6 @@ import {
   GET_ALL_ORDERS_SUCCESS,
   GET_ALL_ORDERS_FAIL,
 
-  // password reset flows
   PASSWORD_RESET_REQUEST,
   PASSWORD_RESET_SUCCESS,
   PASSWORD_RESET_FAIL,
@@ -65,7 +64,6 @@ import {
    Helpers
 ----------------------------------------*/
 const normalizeUser = (data) => {
-  // Accept both SimpleJWT pair or custom payloads
   const token = data?.access || data?.token || "";
   const refresh = data?.refresh || "";
   const admin = !!(data?.admin ?? data?.is_staff ?? data?.isAdmin);
@@ -88,31 +86,22 @@ const authHeader = (getState) => {
    AUTH
 ----------------------------------------*/
 
-/**
- * ✅ FIXED: Login now uses SimpleJWT default endpoint:
- * POST /api/token/  with { username, password }
- * (We send username=email to support email sign-in.)
- */
 export const login = (email, password) => async (dispatch) => {
   try {
     dispatch({ type: USER_LOGIN_REQUEST });
 
-    // get token pair
+    // SimpleJWT default endpoint
     const pair = await auth.tokenPair({ username: email, password });
 
-    // You may have a user profile endpoint; if not, build minimal user object
+    // Optional: try to fetch profile; ignore if not present
     let profile = {};
     try {
-      const { data } = await api.get("/api/users/profile/"); // optional, adjust if you have it
+      const { data } = await api.get("/api/users/profile/");
       profile = data || {};
-    } catch {
-      // ignore if not present
-    }
+    } catch {}
 
     const user = normalizeUser({ ...pair, ...profile, email });
     dispatch({ type: USER_LOGIN_SUCCESS, payload: user });
-
-    // Also keep legacy key for older code paths
     localStorage.setItem("userInfo", JSON.stringify(user));
   } catch (error) {
     dispatch({
@@ -125,29 +114,19 @@ export const login = (email, password) => async (dispatch) => {
   }
 };
 
-/**
- * Google login (if your backend supports it).
- * Endpoint adjusted to /api/google-login/; change if yours differs.
- */
 export const googleLogin = (idToken) => async (dispatch) => {
   try {
     dispatch({ type: USER_LOGIN_REQUEST });
-
     const { data } = await api.post(
       "/api/google-login/",
       { id_token: idToken },
       { headers: { "Content-Type": "application/json" } }
     );
-
     const user = normalizeUser(data);
     dispatch({ type: USER_LOGIN_SUCCESS, payload: user });
     localStorage.setItem("userInfo", JSON.stringify(user));
-    if (user.access) {
-      localStorage.setItem("access", user.access);
-    }
-    if (user.refresh) {
-      localStorage.setItem("refresh", user.refresh);
-    }
+    if (user.access) localStorage.setItem("access", user.access);
+    if (user.refresh) localStorage.setItem("refresh", user.refresh);
   } catch (error) {
     dispatch({
       type: USER_LOGIN_FAIL,
@@ -159,9 +138,8 @@ export const googleLogin = (idToken) => async (dispatch) => {
   }
 };
 
-// Logout
 export const logout = () => (dispatch) => {
-  auth.logout(); // clears access/refresh used by interceptors
+  auth.logout();
   localStorage.removeItem("userInfo");
   dispatch({ type: USER_LOGOUT });
   dispatch({ type: CARD_CREATE_RESET });
@@ -171,17 +149,14 @@ export const logout = () => (dispatch) => {
    Registration
 ----------------------------------------*/
 
-// Register (no auto-login). Adjust URL if needed.
 export const register = (username, email, password) => async (dispatch) => {
   try {
     dispatch({ type: USER_REGISTER_REQUEST });
-
     const { data } = await api.post(
       "/api/account/register/",
       { username, email, password },
       { headers: { "Content-Type": "application/json" } }
     );
-
     dispatch({ type: USER_REGISTER_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
@@ -194,68 +169,23 @@ export const register = (username, email, password) => async (dispatch) => {
   }
 };
 
-// Validate token (example endpoint)
-export const checkTokenValidation = () => async (dispatch, getState) => {
+/* ---------------------------------------
+   Token check (ADMIN pages use it)
+----------------------------------------*/
+export const checkTokenValidation = () => async (dispatch) => {
   try {
     dispatch({ type: CHECK_TOKEN_VALID_REQUEST });
-    await api.get("/api/payments/check-token/", authHeader(getState));
+    // any protected endpoint will do; we added this one in payments app
+    await api.get("/payments/check-token/");
     dispatch({ type: CHECK_TOKEN_VALID_SUCCESS });
   } catch (error) {
-    dispatch({
-      type: CHECK_TOKEN_VALID_FAIL,
-      payload:
-        error?.response?.data?.details ||
-        error?.response?.data?.detail ||
-        error.message,
-    });
+    const msg =
+      error?.response?.data?.detail ||
+      error?.response?.data?.details ||
+      error.message;
+    dispatch({ type: CHECK_TOKEN_VALID_FAIL, payload: msg });
   }
 };
-
-/* ---------------------------------------
-   Password reset
-----------------------------------------*/
-
-export const requestPasswordReset = (email) => async (dispatch) => {
-  try {
-    dispatch({ type: PASSWORD_RESET_REQUEST });
-    await api.post(
-      "/api/account/password-reset/",
-      { email },
-      { headers: { "Content-Type": "application/json" } }
-    );
-    dispatch({ type: PASSWORD_RESET_SUCCESS });
-  } catch (error) {
-    dispatch({
-      type: PASSWORD_RESET_FAIL,
-      payload:
-        error?.response?.data?.detail ||
-        error?.response?.data?.details ||
-        error.message,
-    });
-  }
-};
-
-export const confirmPasswordReset =
-  ({ uid, token, new_password }) =>
-  async (dispatch) => {
-    try {
-      dispatch({ type: PASSWORD_RESET_CONFIRM_REQUEST });
-      await api.post(
-        "/api/account/password-reset/confirm/",
-        { uid, token, new_password },
-        { headers: { "Content-Type": "application/json" } }
-      );
-      dispatch({ type: PASSWORD_RESET_CONFIRM_SUCCESS });
-    } catch (error) {
-      dispatch({
-        type: PASSWORD_RESET_CONFIRM_FAIL,
-        payload:
-          error?.response?.data?.detail ||
-          error?.response?.data?.details ||
-          error.message,
-      });
-    }
-  };
 
 /* ---------------------------------------
    USER
@@ -280,11 +210,9 @@ export const userDetails = (id) => async (dispatch, getState) => {
 export const userUpdateDetails = (userData) => async (dispatch, getState) => {
   try {
     dispatch({ type: UPDATE_USER_DETAILS_REQUEST });
-
     const {
       userLoginReducer: { userInfo },
     } = getState();
-
     const { data } = await api.put(
       `/api/account/user_update/${userInfo.id}/`,
       {
@@ -294,7 +222,6 @@ export const userUpdateDetails = (userData) => async (dispatch, getState) => {
       },
       authHeader(getState)
     );
-
     dispatch({ type: UPDATE_USER_DETAILS_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
@@ -310,13 +237,11 @@ export const userUpdateDetails = (userData) => async (dispatch, getState) => {
 export const userAccountDelete = (userData) => async (dispatch, getState) => {
   try {
     dispatch({ type: DELETE_USER_ACCOUNT_REQUEST });
-
     const { data } = await api.post(
       `/api/account/user_delete/${userData.id}/`,
       { password: userData.password },
       authHeader(getState)
     );
-
     dispatch({ type: DELETE_USER_ACCOUNT_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
@@ -330,7 +255,7 @@ export const userAccountDelete = (userData) => async (dispatch, getState) => {
 };
 
 /* ---------------------------------------
-   ADDRESSES
+   Addresses
 ----------------------------------------*/
 
 export const getAllAddress = () => async (dispatch, getState) => {
@@ -433,7 +358,7 @@ export const deleteUserAddress = (id) => async (dispatch, getState) => {
 };
 
 /* ---------------------------------------
-   ORDERS
+   Orders
 ----------------------------------------*/
 
 export const getAllOrders = () => async (dispatch, getState) => {
@@ -443,7 +368,7 @@ export const getAllOrders = () => async (dispatch, getState) => {
       "/api/account/all-orders-list/",
       authHeader(getState)
     );
-    dispatch({ type: GET_ALL_ORDERS_SUCCESS, payload: data });
+  dispatch({ type: GET_ALL_ORDERS_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
       type: GET_ALL_ORDERS_FAIL,
