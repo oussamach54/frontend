@@ -28,6 +28,7 @@ export default function HomePage() {
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [errorFeatured, setErrorFeatured]     = useState(null);
 
+  // NOTE: now served from /public/hero/*
   const banners = useMemo(() => ([
     '/hero/banner1.jpg',
     '/hero/banner2.jpg',
@@ -41,7 +42,9 @@ export default function HomePage() {
     (async () => {
       try {
         const { data } = await axios.get('/api/products/');
-        if (ok) setFeatured((data || []).slice(0, 12));
+        if (!ok) return;
+        const list = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
+        setFeatured(list.slice(0, 12));
       } catch (e) {
         if (ok) setErrorFeatured(e?.response?.data?.detail || e.message);
       } finally {
@@ -183,6 +186,7 @@ export default function HomePage() {
             </Col>
             <Col md={7} className="video-col">
               <div className="video-wrapper">
+                {/* poster now exists at /public/video/preview.jpg */}
                 <video autoPlay loop muted playsInline className="skincare-video" poster="/video/preview.jpg">
                   <source src="/video/skincare.mp4" type="video/mp4" />
                   Votre navigateur ne supporte pas la lecture vidéo.
