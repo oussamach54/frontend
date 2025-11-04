@@ -11,11 +11,11 @@ import SiteFooter from "../components/SiteFooter";
 import HScrollButtons from "../components/HScrollButtons";
 
 const CATS = [
-  { key: "face",    label: "VISAGE"  },
-  { key: "lips",    label: "LÈVRES"  },
-  { key: "eyes",    label: "YEUX"    },
-  { key: "eyebrow", label: "SOURCILS"},
-  { key: "hair",    label: "CHEVEUX" },
+  { key: "face",    label: "VISAGE"   },
+  { key: "lips",    label: "LÈVRES"   },
+  { key: "eyes",    label: "YEUX"     },
+  { key: "eyebrow", label: "SOURCILS" },
+  { key: "hair",    label: "CHEVEUX"  },
 ];
 
 export default function HomePage() {
@@ -28,7 +28,14 @@ export default function HomePage() {
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [errorFeatured, setErrorFeatured]     = useState(null);
 
-  // NOTE: now served from /public/hero/*
+  // normalize API responses to a plain array so .map() never crashes
+  const toList = (d) => {
+    if (Array.isArray(d)) return d;
+    if (Array.isArray(d?.results)) return d.results;
+    if (Array.isArray(d?.data)) return d.data;
+    return [];
+  };
+
   const banners = useMemo(() => ([
     '/hero/banner1.jpg',
     '/hero/banner2.jpg',
@@ -37,14 +44,16 @@ export default function HomePage() {
     '/hero/banner5.jpg',
   ]), []);
 
+  // Featured products (first 12)
   useEffect(() => {
     let ok = true;
     (async () => {
       try {
         const { data } = await axios.get('/api/products/');
-        if (!ok) return;
-        const list = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
-        setFeatured(list.slice(0, 12));
+        if (ok) {
+          const list = toList(data);
+          setFeatured(list.slice(0, 12));
+        }
       } catch (e) {
         if (ok) setErrorFeatured(e?.response?.data?.detail || e.message);
       } finally {
@@ -54,6 +63,7 @@ export default function HomePage() {
     return () => { ok = false; };
   }, []);
 
+  // Category products
   useEffect(() => {
     let alive = true;
     setLoading(true);
@@ -63,7 +73,7 @@ export default function HomePage() {
       try {
         const { data } = await axios.get(`/api/products/?type=${encodeURIComponent(tab)}`);
         if (!alive) return;
-        setProducts(Array.isArray(data) ? data : []);
+        setProducts(toList(data));
       } catch (e) {
         if (alive) setError(e?.response?.data?.detail || e.message);
       } finally {
@@ -186,8 +196,8 @@ export default function HomePage() {
             </Col>
             <Col md={7} className="video-col">
               <div className="video-wrapper">
-                {/* poster now exists at /public/video/preview.jpg */}
-                <video autoPlay loop muted playsInline className="skincare-video" poster="/video/preview.jpg">
+                {/* /video/preview.jpg doesn't exist, so we omit poster to avoid 404 */}
+                <video autoPlay loop muted playsInline className="skincare-video">
                   <source src="/video/skincare.mp4" type="video/mp4" />
                   Votre navigateur ne supporte pas la lecture vidéo.
                 </video>
