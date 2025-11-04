@@ -4,8 +4,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation } from "react-router-dom";
 import { Form, Button } from "react-bootstrap";
 import Message from "../components/Message";
-import { login, googleLogin } from "../actions/userActions";
-import { useGoogleLogin } from "@react-oauth/google";
+import { login } from "../actions/userActions";
+// NOTE: Google login temporarily disabled to avoid client_id error
+// import { googleLogin } from "../actions/userActions";
+// import { useGoogleLogin } from "@react-oauth/google";
 import "./login-register.css";
 
 export default function LoginPage({ history }) {
@@ -26,14 +28,6 @@ export default function LoginPage({ history }) {
     dispatch(login(email, password));
   };
 
-  const startGoogle = useGoogleLogin({
-    flow: "implicit",
-    scope: "openid email profile",
-    onSuccess: async (resp) => {
-      if (resp?.access_token) dispatch(googleLogin(resp.access_token));
-    },
-  });
-
   return (
     <div className="auth-page">
       <div className="auth-card">
@@ -43,7 +37,7 @@ export default function LoginPage({ history }) {
               src="/brand/logop.png"
               alt="Beauty Shop"
               onError={(e) => {
-                e.currentTarget.src = "/logo512.png"; // fallback if missing
+                e.currentTarget.src = "/logo512.png";
               }}
             />
           </div>
@@ -89,6 +83,7 @@ export default function LoginPage({ history }) {
 
             <div className="d-flex justify-content-between align-items-center mb-4">
               <Link to="/forgot-password">Mot de passe oublié ?</Link>
+              {/* Google login button disabled until OAuth is configured */}
               {/* <Button variant="light" onClick={() => startGoogle()}>Se connecter avec Google</Button> */}
             </div>
 
