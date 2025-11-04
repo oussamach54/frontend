@@ -18,6 +18,15 @@ const CATS = [
   { key: "hair",    label: "CHEVEUX"  },
 ];
 
+// normalize any API shape into a plain array
+const toList = (d) => {
+  if (Array.isArray(d)) return d;
+  if (Array.isArray(d?.results)) return d.results;     // DRF pagination
+  if (Array.isArray(d?.data)) return d.data;           // some APIs nest under data
+  if (Array.isArray(d?.items)) return d.items;         // fallback pattern
+  return [];
+};
+
 export default function HomePage() {
   const [tab, setTab]           = useState("face");
   const [loading, setLoading]   = useState(true);
@@ -27,14 +36,6 @@ export default function HomePage() {
   const [featured, setFeatured] = useState([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [errorFeatured, setErrorFeatured]     = useState(null);
-
-  // normalize API responses to a plain array so .map() never crashes
-  const toList = (d) => {
-    if (Array.isArray(d)) return d;
-    if (Array.isArray(d?.results)) return d.results;
-    if (Array.isArray(d?.data)) return d.data;
-    return [];
-  };
 
   const banners = useMemo(() => ([
     '/hero/banner1.jpg',
@@ -50,10 +51,8 @@ export default function HomePage() {
     (async () => {
       try {
         const { data } = await axios.get('/api/products/');
-        if (ok) {
-          const list = toList(data);
-          setFeatured(list.slice(0, 12));
-        }
+        if (!ok) return;
+        setFeatured(toList(data).slice(0, 12));
       } catch (e) {
         if (ok) setErrorFeatured(e?.response?.data?.detail || e.message);
       } finally {
@@ -83,6 +82,10 @@ export default function HomePage() {
     return () => { alive = false; };
   }, [tab]);
 
+  // extra safety: never call .map on non-arrays
+  const featuredList = Array.isArray(featured) ? featured : [];
+  const productList  = Array.isArray(products) ? products : [];
+
   return (
     <>
       {/* ===== HERO strip ===== */}
@@ -94,7 +97,7 @@ export default function HomePage() {
           <p className="display-sub lead-tight font-sans mb-4">
             Safe, effective routines for hydration, brightening and barrier repair — shipped fast.
           </p>
-          <Button size="lg" variant="light" href="/products">Discover our products</Button>
+        <Button size="lg" variant="light" href="/products">Discover our products</Button>
         </div>
 
         <div className="hero-track">
@@ -126,9 +129,9 @@ export default function HomePage() {
         {errorFeatured && <Alert variant="danger">{errorFeatured}</Alert>}
 
         {!loadingFeatured && !errorFeatured && (
-          featured.length ? (
+          featuredList.length ? (
             <HScrollButtons step={340}>
-              {featured.map((p) => <HomeProductCard key={p.id} product={p} />)}
+              {featuredList.map((p) => <HomeProductCard key={p.id} product={p} />)}
             </HScrollButtons>
           ) : (
             <div className="text-center text-muted py-5 font-sans">
@@ -166,9 +169,9 @@ export default function HomePage() {
           {error && <Alert variant="danger">{error}</Alert>}
 
           {!loading && !error && (
-            products.length ? (
+            productList.length ? (
               <HScrollButtons step={340}>
-                {products.map((p) => <HomeProductCard key={p.id} product={p} />)}
+                {productList.map((p) => <HomeProductCard key={p.id} product={p} />)}
               </HScrollButtons>
             ) : (
               <div className="text-center text-muted py-5 font-sans">
@@ -196,7 +199,7 @@ export default function HomePage() {
             </Col>
             <Col md={7} className="video-col">
               <div className="video-wrapper">
-                {/* /video/preview.jpg doesn't exist, so we omit poster to avoid 404 */}
+                {/* poster removed to avoid 404 since /video/preview.jpg doesn't exist */}
                 <video autoPlay loop muted playsInline className="skincare-video">
                   <source src="/video/skincare.mp4" type="video/mp4" />
                   Votre navigateur ne supporte pas la lecture vidéo.
