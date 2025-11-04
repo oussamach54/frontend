@@ -1,5 +1,5 @@
 // src/actions/userActions.js
-import axios from 'axios';
+import api, { auth } from "../api";
 import {
   USER_LOGIN_REQUEST,
   USER_LOGIN_SUCCESS,
@@ -52,22 +52,24 @@ import {
   GET_ALL_ORDERS_SUCCESS,
   GET_ALL_ORDERS_FAIL,
 
-  // ✅ Add these to your constants/index.js
+  // password reset flows
   PASSWORD_RESET_REQUEST,
   PASSWORD_RESET_SUCCESS,
   PASSWORD_RESET_FAIL,
   PASSWORD_RESET_CONFIRM_REQUEST,
   PASSWORD_RESET_CONFIRM_SUCCESS,
   PASSWORD_RESET_CONFIRM_FAIL,
-} from '../constants/index';
+} from "../constants/index";
 
 /* ---------------------------------------
    Helpers
 ----------------------------------------*/
 const normalizeUser = (data) => {
-  const token = data?.access || data?.token || '';
+  // Accept both SimpleJWT pair or custom payloads
+  const token = data?.access || data?.token || "";
+  const refresh = data?.refresh || "";
   const admin = !!(data?.admin ?? data?.is_staff ?? data?.isAdmin);
-  const user = { ...data, token, admin };
+  const user = { ...data, token, access: token, refresh, admin };
   return user;
 };
 
@@ -76,7 +78,7 @@ const authHeader = (getState) => {
   const token = userInfo?.token || userInfo?.access;
   return {
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   };
@@ -87,58 +89,71 @@ const authHeader = (getState) => {
 ----------------------------------------*/
 
 /**
- * Email/password login (backward-compatible):
- * - Sends { email, username: email, password } so it works whether
- *   your backend expects "email" or "username".
+ * ✅ FIXED: Login now uses SimpleJWT default endpoint:
+ * POST /api/token/  with { username, password }
+ * (We send username=email to support email sign-in.)
  */
 export const login = (email, password) => async (dispatch) => {
   try {
     dispatch({ type: USER_LOGIN_REQUEST });
 
-    // 🔗 Adjust if your endpoint differs
-    const { data } = await axios.post(
-      '/account/login/',
-      { email, username: email, password },
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    // get token pair
+    const pair = await auth.tokenPair({ username: email, password });
 
-    const user = normalizeUser(data);
+    // You may have a user profile endpoint; if not, build minimal user object
+    let profile = {};
+    try {
+      const { data } = await api.get("/api/users/profile/"); // optional, adjust if you have it
+      profile = data || {};
+    } catch {
+      // ignore if not present
+    }
+
+    const user = normalizeUser({ ...pair, ...profile, email });
     dispatch({ type: USER_LOGIN_SUCCESS, payload: user });
 
-    if (user.token) axios.defaults.headers.common['Authorization'] = `Bearer ${user.token}`;
-    localStorage.setItem('userInfo', JSON.stringify(user));
+    // Also keep legacy key for older code paths
+    localStorage.setItem("userInfo", JSON.stringify(user));
   } catch (error) {
     dispatch({
       type: USER_LOGIN_FAIL,
       payload:
-        (error.response && (error.response.data.detail || error.response.data.details)) ||
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
         error.message,
     });
   }
 };
 
-// Google login (unchanged)
+/**
+ * Google login (if your backend supports it).
+ * Endpoint adjusted to /api/google-login/; change if yours differs.
+ */
 export const googleLogin = (idToken) => async (dispatch) => {
   try {
     dispatch({ type: USER_LOGIN_REQUEST });
 
-    // 🔗 Adjust if your endpoint differs
-    const { data } = await axios.post(
-      '/account/google-login/',
+    const { data } = await api.post(
+      "/api/google-login/",
       { id_token: idToken },
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: { "Content-Type": "application/json" } }
     );
 
     const user = normalizeUser(data);
     dispatch({ type: USER_LOGIN_SUCCESS, payload: user });
-
-    if (user.token) axios.defaults.headers.common['Authorization'] = `Bearer ${user.token}`;
-    localStorage.setItem('userInfo', JSON.stringify(user));
+    localStorage.setItem("userInfo", JSON.stringify(user));
+    if (user.access) {
+      localStorage.setItem("access", user.access);
+    }
+    if (user.refresh) {
+      localStorage.setItem("refresh", user.refresh);
+    }
   } catch (error) {
     dispatch({
       type: USER_LOGIN_FAIL,
       payload:
-        (error.response && (error.response.data.detail || error.response.data.error)) ||
+        error?.response?.data?.detail ||
+        error?.response?.data?.error ||
         error.message,
     });
   }
@@ -146,8 +161,8 @@ export const googleLogin = (idToken) => async (dispatch) => {
 
 // Logout
 export const logout = () => (dispatch) => {
-  localStorage.removeItem('userInfo');
-  delete axios.defaults.headers.common['Authorization'];
+  auth.logout(); // clears access/refresh used by interceptors
+  localStorage.removeItem("userInfo");
   dispatch({ type: USER_LOGOUT });
   dispatch({ type: CARD_CREATE_RESET });
 };
@@ -156,16 +171,15 @@ export const logout = () => (dispatch) => {
    Registration
 ----------------------------------------*/
 
-// Register (no auto-login)
+// Register (no auto-login). Adjust URL if needed.
 export const register = (username, email, password) => async (dispatch) => {
   try {
     dispatch({ type: USER_REGISTER_REQUEST });
 
-    // 🔗 Adjust if your endpoint differs
-    const { data } = await axios.post(
-      '/account/register/',
+    const { data } = await api.post(
+      "/api/account/register/",
       { username, email, password },
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: { "Content-Type": "application/json" } }
     );
 
     dispatch({ type: USER_REGISTER_SUCCESS, payload: data });
@@ -173,89 +187,75 @@ export const register = (username, email, password) => async (dispatch) => {
     dispatch({
       type: USER_REGISTER_FAIL,
       payload:
-        (error.response && (error.response.data.detail || error.response.data.details)) ||
+        error?.response?.data?.detail ||
+        error?.response?.data?.details ||
         error.message,
     });
   }
 };
 
-// Validate token (unchanged)
+// Validate token (example endpoint)
 export const checkTokenValidation = () => async (dispatch, getState) => {
   try {
     dispatch({ type: CHECK_TOKEN_VALID_REQUEST });
-    const { data } = await axios.get('/payments/check-token/', authHeader(getState));
-    dispatch({ type: CHECK_TOKEN_VALID_SUCCESS, payload: data });
+    await api.get("/api/payments/check-token/", authHeader(getState));
+    dispatch({ type: CHECK_TOKEN_VALID_SUCCESS });
   } catch (error) {
     dispatch({
       type: CHECK_TOKEN_VALID_FAIL,
       payload:
-        (error.response && (error.response.data.details || error.response.data.detail)) ||
+        error?.response?.data?.details ||
+        error?.response?.data?.detail ||
         error.message,
     });
   }
 };
 
 /* ---------------------------------------
-   Password reset (Forgot password)
+   Password reset
 ----------------------------------------*/
 
-/**
- * Step 1: user submits email; backend sends reset email.
- * Expected body: { email }
- * Typical endpoints:
- *   - Your custom: /account/password-reset/
- *   - Djoser: /auth/users/reset_password/
- */
 export const requestPasswordReset = (email) => async (dispatch) => {
   try {
     dispatch({ type: PASSWORD_RESET_REQUEST });
-
-    // 🔗 Adjust if your endpoint differs
-    await axios.post(
-      '/account/password-reset/',
+    await api.post(
+      "/api/account/password-reset/",
       { email },
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: { "Content-Type": "application/json" } }
     );
-
     dispatch({ type: PASSWORD_RESET_SUCCESS });
   } catch (error) {
     dispatch({
       type: PASSWORD_RESET_FAIL,
       payload:
-        (error.response && (error.response.data.detail || error.response.data.details)) ||
+        error?.response?.data?.detail ||
+        error?.response?.data?.details ||
         error.message,
     });
   }
 };
 
-/**
- * Step 2: user clicks email link → you receive uid/token (or code)
- * Expected body (common patterns):
- *   - { uid, token, new_password }
- *   - Djoser expects { uid, token, new_password }
- *   - Django-allauth may use key names slightly different; adjust as needed.
- */
-export const confirmPasswordReset = ({ uid, token, new_password }) => async (dispatch) => {
-  try {
-    dispatch({ type: PASSWORD_RESET_CONFIRM_REQUEST });
-
-    // 🔗 Adjust if your endpoint differs
-    await axios.post(
-      '/account/password-reset/confirm/',
-      { uid, token, new_password },
-      { headers: { 'Content-Type': 'application/json' } }
-    );
-
-    dispatch({ type: PASSWORD_RESET_CONFIRM_SUCCESS });
-  } catch (error) {
-    dispatch({
-      type: PASSWORD_RESET_CONFIRM_FAIL,
-      payload:
-        (error.response && (error.response.data.detail || error.response.data.details)) ||
-        error.message,
-    });
-  }
-};
+export const confirmPasswordReset =
+  ({ uid, token, new_password }) =>
+  async (dispatch) => {
+    try {
+      dispatch({ type: PASSWORD_RESET_CONFIRM_REQUEST });
+      await api.post(
+        "/api/account/password-reset/confirm/",
+        { uid, token, new_password },
+        { headers: { "Content-Type": "application/json" } }
+      );
+      dispatch({ type: PASSWORD_RESET_CONFIRM_SUCCESS });
+    } catch (error) {
+      dispatch({
+        type: PASSWORD_RESET_CONFIRM_FAIL,
+        payload:
+          error?.response?.data?.detail ||
+          error?.response?.data?.details ||
+          error.message,
+      });
+    }
+  };
 
 /* ---------------------------------------
    USER
@@ -264,13 +264,14 @@ export const confirmPasswordReset = ({ uid, token, new_password }) => async (dis
 export const userDetails = (id) => async (dispatch, getState) => {
   try {
     dispatch({ type: USER_DETAILS_REQUEST });
-    const { data } = await axios.get(`/account/user/${id}`, authHeader(getState));
+    const { data } = await api.get(`/api/account/user/${id}/`, authHeader(getState));
     dispatch({ type: USER_DETAILS_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
       type: USER_DETAILS_FAIL,
       payload:
-        (error.response && (error.response.data.details || error.response.data.detail)) ||
+        error?.response?.data?.details ||
+        error?.response?.data?.detail ||
         error.message,
     });
   }
@@ -284,8 +285,8 @@ export const userUpdateDetails = (userData) => async (dispatch, getState) => {
       userLoginReducer: { userInfo },
     } = getState();
 
-    const { data } = await axios.put(
-      `/account/user_update/${userInfo.id}/`,
+    const { data } = await api.put(
+      `/api/account/user_update/${userInfo.id}/`,
       {
         username: userData.username,
         email: userData.email,
@@ -299,7 +300,8 @@ export const userUpdateDetails = (userData) => async (dispatch, getState) => {
     dispatch({
       type: UPDATE_USER_DETAILS_FAIL,
       payload:
-        (error.response && (error.response.data.details || error.response.data.detail)) ||
+        error?.response?.data?.details ||
+        error?.response?.data?.detail ||
         error.message,
     });
   }
@@ -309,8 +311,8 @@ export const userAccountDelete = (userData) => async (dispatch, getState) => {
   try {
     dispatch({ type: DELETE_USER_ACCOUNT_REQUEST });
 
-    const { data } = await axios.post(
-      `/account/user_delete/${userData.id}/`,
+    const { data } = await api.post(
+      `/api/account/user_delete/${userData.id}/`,
       { password: userData.password },
       authHeader(getState)
     );
@@ -320,7 +322,8 @@ export const userAccountDelete = (userData) => async (dispatch, getState) => {
     dispatch({
       type: DELETE_USER_ACCOUNT_FAIL,
       payload:
-        (error.response && (error.response.data.details || error.response.data.detail)) ||
+        error?.response?.data?.details ||
+        error?.response?.data?.detail ||
         error.message,
     });
   }
@@ -333,13 +336,17 @@ export const userAccountDelete = (userData) => async (dispatch, getState) => {
 export const getAllAddress = () => async (dispatch, getState) => {
   try {
     dispatch({ type: GET_USER_ALL_ADDRESSES_REQUEST });
-    const { data } = await axios.get('/account/all-address-details/', authHeader(getState));
+    const { data } = await api.get(
+      "/api/account/all-address-details/",
+      authHeader(getState)
+    );
     dispatch({ type: GET_USER_ALL_ADDRESSES_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
       type: GET_USER_ALL_ADDRESSES_FAIL,
       payload:
-        (error.response && (error.response.data.details || error.response.data.detail)) ||
+        error?.response?.data?.details ||
+        error?.response?.data?.detail ||
         error.message,
     });
   }
@@ -348,58 +355,78 @@ export const getAllAddress = () => async (dispatch, getState) => {
 export const getSingleAddress = (id) => async (dispatch, getState) => {
   try {
     dispatch({ type: GET_SINGLE_ADDRESS_REQUEST });
-    const { data } = await axios.get(`/account/address-details/${id}/`, authHeader(getState));
+    const { data } = await api.get(
+      `/api/account/address-details/${id}/`,
+      authHeader(getState)
+    );
     dispatch({ type: GET_SINGLE_ADDRESS_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
       type: GET_SINGLE_ADDRESS_FAIL,
       payload:
-        (error.response && (error.response.data.details || error.response.data.detail)) ||
+        error?.response?.data?.details ||
+        error?.response?.data?.detail ||
         error.message,
     });
   }
 };
 
-export const createUserAddress = (addressData) => async (dispatch, getState) => {
-  try {
-    dispatch({ type: CREATE_USER_ADDRESS_REQUEST });
-    const { data } = await axios.post('/account/create-address/', addressData, authHeader(getState));
-    dispatch({ type: CREATE_USER_ADDRESS_SUCCESS, payload: data });
-  } catch (error) {
-    dispatch({
-      type: CREATE_USER_ADDRESS_FAIL,
-      payload:
-        (error.response && (error.response.data.details || error.response.data.detail)) ||
-        error.message,
-    });
-  }
-};
+export const createUserAddress =
+  (addressData) => async (dispatch, getState) => {
+    try {
+      dispatch({ type: CREATE_USER_ADDRESS_REQUEST });
+      const { data } = await api.post(
+        "/api/account/create-address/",
+        addressData,
+        authHeader(getState)
+      );
+      dispatch({ type: CREATE_USER_ADDRESS_SUCCESS, payload: data });
+    } catch (error) {
+      dispatch({
+        type: CREATE_USER_ADDRESS_FAIL,
+        payload:
+          error?.response?.data?.details ||
+          error?.response?.data?.detail ||
+          error.message,
+      });
+    }
+  };
 
-export const updateUserAddress = (id, addressData) => async (dispatch, getState) => {
-  try {
-    dispatch({ type: UPDATE_USER_ADDRESS_REQUEST });
-    const { data } = await axios.put(`/account/update-address/${id}/`, addressData, authHeader(getState));
-    dispatch({ type: UPDATE_USER_ADDRESS_SUCCESS, payload: data });
-  } catch (error) {
-    dispatch({
-      type: UPDATE_USER_ADDRESS_FAIL,
-      payload:
-        (error.response && (error.response.data.details || error.response.data.detail)) ||
-        error.message,
-    });
-  }
-};
+export const updateUserAddress =
+  (id, addressData) => async (dispatch, getState) => {
+    try {
+      dispatch({ type: UPDATE_USER_ADDRESS_REQUEST });
+      const { data } = await api.put(
+        `/api/account/update-address/${id}/`,
+        addressData,
+        authHeader(getState)
+      );
+      dispatch({ type: UPDATE_USER_ADDRESS_SUCCESS, payload: data });
+    } catch (error) {
+      dispatch({
+        type: UPDATE_USER_ADDRESS_FAIL,
+        payload:
+          error?.response?.data?.details ||
+          error?.response?.data?.detail ||
+          error.message,
+      });
+    }
+  };
 
 export const deleteUserAddress = (id) => async (dispatch, getState) => {
   try {
     dispatch({ type: DELETE_USER_ADDRESS_REQUEST });
-    const { data } = await axios.delete(`/account/delete-address/${id}/`, authHeader(getState));
+    const { data } = await api.delete(
+      `/api/account/delete-address/${id}/`,
+      authHeader(getState)
+    );
     dispatch({ type: DELETE_USER_ADDRESS_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
       type: DELETE_USER_ADDRESS_FAIL,
       payload:
-        (error.response && (error.response.data.details || error.response.data.detail)) ||
+        error?.response?.data?.details ||
+        error?.response?.data?.detail ||
         error.message,
     });
   }
@@ -412,13 +439,17 @@ export const deleteUserAddress = (id) => async (dispatch, getState) => {
 export const getAllOrders = () => async (dispatch, getState) => {
   try {
     dispatch({ type: GET_ALL_ORDERS_REQUEST });
-    const { data } = await axios.get('/account/all-orders-list/', authHeader(getState));
+    const { data } = await api.get(
+      "/api/account/all-orders-list/",
+      authHeader(getState)
+    );
     dispatch({ type: GET_ALL_ORDERS_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
       type: GET_ALL_ORDERS_FAIL,
       payload:
-        (error.response && (error.response.data.details || error.response.data.detail)) ||
+        error?.response?.data?.details ||
+        error?.response?.data?.detail ||
         error.message,
     });
   }
