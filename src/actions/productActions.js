@@ -1,233 +1,179 @@
+// COMPLETE FILE
+import api from "../api";
 import {
-    PRODUCTS_LIST_REQUEST,
-    PRODUCTS_LIST_SUCCESS,
-    PRODUCTS_LIST_FAIL,
+  PRODUCTS_LIST_REQUEST,
+  PRODUCTS_LIST_SUCCESS,
+  PRODUCTS_LIST_FAIL,
 
-    PRODUCT_DETAILS_REQUEST,
-    PRODUCT_DETAILS_SUCCESS,
-    PRODUCT_DETAILS_FAIL,
+  PRODUCT_DETAILS_REQUEST,
+  PRODUCT_DETAILS_SUCCESS,
+  PRODUCT_DETAILS_FAIL,
 
-    CREATE_PRODUCT_REQUEST,
-    CREATE_PRODUCT_SUCCESS,
-    CREATE_PRODUCT_FAIL,
+  CREATE_PRODUCT_REQUEST,
+  CREATE_PRODUCT_SUCCESS,
+  CREATE_PRODUCT_FAIL,
 
-    DELETE_PRODUCT_REQUEST,
-    DELETE_PRODUCT_SUCCESS,
-    DELETE_PRODUCT_FAIL,
+  DELETE_PRODUCT_REQUEST,
+  DELETE_PRODUCT_SUCCESS,
+  DELETE_PRODUCT_FAIL,
 
-    UPDATE_PRODUCT_REQUEST,
-    UPDATE_PRODUCT_SUCCESS,
-    UPDATE_PRODUCT_FAIL,
+  UPDATE_PRODUCT_REQUEST,
+  UPDATE_PRODUCT_SUCCESS,
+  UPDATE_PRODUCT_FAIL,
 
-    CHANGE_DELIVERY_STATUS_REQUEST,
-    CHANGE_DELIVERY_STATUS_SUCCESS,
-    CHANGE_DELIVERY_STATUS_FAIL,
+  CHANGE_DELIVERY_STATUS_REQUEST,
+  CHANGE_DELIVERY_STATUS_SUCCESS,
+  CHANGE_DELIVERY_STATUS_FAIL,
+} from "../constants/index";
 
-} from '../constants/index'
+/* Small helper to always pick the right token key */
+const pickToken = (getState) => {
+  const { userLoginReducer: { userInfo } = {} } = getState();
+  return userInfo?.access || userInfo?.token || "";
+};
 
-import axios from 'axios'
-
-
-// products list
+/* ---------------------------------------
+   LIST + DETAILS
+----------------------------------------*/
 export const getProductsList = () => async (dispatch) => {
-    try {
-        dispatch({
-            type: PRODUCTS_LIST_REQUEST
-        })
+  try {
+    dispatch({ type: PRODUCTS_LIST_REQUEST });
+    const { data } = await api.get("/api/products/");
+    dispatch({ type: PRODUCTS_LIST_SUCCESS, payload: data });
+  } catch (error) {
+    dispatch({
+      type: PRODUCTS_LIST_FAIL,
+      payload: error?.response?.data?.detail || error.message,
+    });
+  }
+};
 
-        // call api
-        const { data } = await axios.get("/api/products/")
-
-        dispatch({
-            type: PRODUCTS_LIST_SUCCESS,
-            payload: data
-        })
-    } catch (error) {
-        dispatch({
-            type: PRODUCTS_LIST_FAIL,
-            payload: error.message
-        })
-    }
-}
-
-
-// product details
 export const getProductDetails = (id) => async (dispatch) => {
+  try {
+    dispatch({ type: PRODUCT_DETAILS_REQUEST });
+    const { data } = await api.get(`/api/product/${id}/`);
+    dispatch({ type: PRODUCT_DETAILS_SUCCESS, payload: data });
+  } catch (error) {
+    dispatch({
+      type: PRODUCT_DETAILS_FAIL,
+      payload: error?.response?.data?.detail || error.message,
+    });
+  }
+};
+
+/* ---------------------------------------
+   CREATE
+   - Primary endpoint: /api/products/create/  (new)
+   - Fallback to:      /api/product-create/    (old)
+----------------------------------------*/
+export const createProduct = (formData) => async (dispatch, getState) => {
+  try {
+    dispatch({ type: CREATE_PRODUCT_REQUEST });
+
+    const token = pickToken(getState);
+    const cfg = {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    };
+
+    // Try the new canonical route first
     try {
-        dispatch({
-            type: PRODUCT_DETAILS_REQUEST
-        })
-
-        // call api
-        const { data } = await axios.get(`/api/product/${id}/`)
-
-        dispatch({
-            type: PRODUCT_DETAILS_SUCCESS,
-            payload: data
-        })
-    } catch (error) {
-        dispatch({
-            type: PRODUCT_DETAILS_FAIL,
-            payload: error.message
-        })
+      const { data } = await api.post("/api/products/create/", formData, cfg);
+      dispatch({ type: CREATE_PRODUCT_SUCCESS, payload: data });
+      return data;
+    } catch (e) {
+      // If 404 on new route, try the legacy route automatically
+      if (e?.response?.status === 404) {
+        const { data } = await api.post("/api/product-create/", formData, cfg);
+        dispatch({ type: CREATE_PRODUCT_SUCCESS, payload: data });
+        return data;
+      }
+      throw e;
     }
-}
+  } catch (error) {
+    dispatch({
+      type: CREATE_PRODUCT_FAIL,
+      payload: error?.response?.data?.detail || error.message,
+    });
+    throw error;
+  }
+};
 
+/* ---------------------------------------
+   UPDATE
+----------------------------------------*/
+export const updateProduct = (id, formData) => async (dispatch, getState) => {
+  try {
+    dispatch({ type: UPDATE_PRODUCT_REQUEST });
 
-// create product
-export const createProduct = (product) => async (dispatch, getState) => {
+    const token = pickToken(getState);
+    const cfg = {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    };
 
-    try {
-        dispatch({
-            type: CREATE_PRODUCT_REQUEST
-        })
+    const { data } = await api.put(`/api/product-update/${id}/`, formData, cfg);
+    dispatch({ type: UPDATE_PRODUCT_SUCCESS, payload: data });
+  } catch (error) {
+    dispatch({
+      type: UPDATE_PRODUCT_FAIL,
+      payload: error?.response?.data?.detail || error.message,
+    });
+  }
+};
 
-        // login reducer
-        const {
-            userLoginReducer: { userInfo },
-        } = getState()
-
-        const config = {
-            headers: {
-                "Content-Type": "multipart/form-data",
-                Authorization: `Bearer ${userInfo.token}`
-            }
-        }
-
-        // api call
-        const { data } = await axios.post(
-            "/api/product-create/",
-            product,
-            config
-        )
-
-        dispatch({
-            type: CREATE_PRODUCT_SUCCESS,
-            payload: data
-        })
-    } catch (error) {
-        dispatch({
-            type: CREATE_PRODUCT_FAIL,
-            payload: error.response && error.response.data.detail ? error.response.data.detail : error.message
-        })
-    }
-}
-
-// delete product
+/* ---------------------------------------
+   DELETE
+----------------------------------------*/
 export const deleteProduct = (id) => async (dispatch, getState) => {
-    try {
-        dispatch({
-            type: DELETE_PRODUCT_REQUEST
-        })
+  try {
+    dispatch({ type: DELETE_PRODUCT_REQUEST });
 
-        // login reducer
-        const {
-            userLoginReducer: { userInfo },
-        } = getState()
+    const token = pickToken(getState);
+    const cfg = {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    };
 
-        const config = {
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${userInfo.token}`
-            }
-        }
+    const { data } = await api.delete(`/api/product-delete/${id}/`, cfg);
+    dispatch({ type: DELETE_PRODUCT_SUCCESS, payload: data });
+  } catch (error) {
+    dispatch({
+      type: DELETE_PRODUCT_FAIL,
+      payload: error?.response?.data?.detail || error.message,
+    });
+  }
+};
 
-        // api call
-        const { data } = await axios.delete(
-            `/api/product-delete/${id}/`,
-            config
-        )
+/* ---------------------------------------
+   ORDER DELIVERY STATUS (ADMIN)
+   Backend route today:
+   /api/account/orders/<id>/status/
+----------------------------------------*/
+export const changeDeliveryStatus = (id, payload) => async (dispatch, getState) => {
+  try {
+    dispatch({ type: CHANGE_DELIVERY_STATUS_REQUEST });
 
-        dispatch({
-            type: DELETE_PRODUCT_SUCCESS,
-            payload: data
-        })
+    const token = pickToken(getState);
+    const cfg = {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    };
 
-    } catch (error) {
-        dispatch({
-            type: DELETE_PRODUCT_FAIL,
-            payload: error.response && error.response.data.detail ? error.response.data.detail : error.message
-        })
-    }
-}
-
-// update product
-export const updateProduct = (id, product) => async (dispatch, getState) => {
-
-    try {
-        dispatch({
-            type: UPDATE_PRODUCT_REQUEST
-        })
-
-        // login reducer
-        const {
-            userLoginReducer: { userInfo },
-        } = getState()
-
-        const config = {
-            headers: {
-                "Content-Type": "multipart/form-data",
-                Authorization: `Bearer ${userInfo.token}`
-            }
-        }
-
-        // api call
-        const { data } = await axios.put(
-            `/api/product-update/${id}/`,
-            product,
-            config
-        )
-
-        dispatch({
-            type: UPDATE_PRODUCT_SUCCESS,
-            payload: data
-        })
-
-    } catch (error) {
-        dispatch({
-            type: UPDATE_PRODUCT_FAIL,
-            payload: error.response && error.response.data.detail ? error.response.data.detail : error.message
-        })
-    }
-}
-
-
-// change ordered product delivery status
-export const changeDeliveryStatus = (id, product) => async (dispatch, getState) => {
-
-    try {
-        dispatch({
-            type: CHANGE_DELIVERY_STATUS_REQUEST
-        })
-
-        // login reducer
-        const {
-            userLoginReducer: { userInfo },
-        } = getState()
-
-        const config = {
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${userInfo.token}`
-            }
-        }
-
-        // api call
-        const { data } = await axios.put(
-            `/account/change-order-status/${id}/`,
-            product,
-            config
-        )
-
-        dispatch({
-            type: CHANGE_DELIVERY_STATUS_SUCCESS,
-            payload: data
-        })
-
-    } catch (error) {
-        dispatch({
-            type: CHANGE_DELIVERY_STATUS_FAIL,
-            payload: error.response && error.response.data.detail ? error.response.data.detail : error.message
-        })
-    }
-}
+    const { data } = await api.put(`/api/account/orders/${id}/status/`, payload, cfg);
+    dispatch({ type: CHANGE_DELIVERY_STATUS_SUCCESS, payload: data });
+  } catch (error) {
+    dispatch({
+      type: CHANGE_DELIVERY_STATUS_FAIL,
+      payload: error?.response?.data?.detail || error.message,
+    });
+  }
+};
