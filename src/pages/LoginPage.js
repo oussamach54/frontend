@@ -1,3 +1,4 @@
+// src/pages/LoginPage.js
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation } from "react-router-dom";
@@ -10,6 +11,7 @@ import "./login-register.css";
 export default function LoginPage({ history }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const dispatch = useDispatch();
   const { error, userInfo } = useSelector((s) => s.userLoginReducer || {});
   const { search } = useLocation();
@@ -21,7 +23,7 @@ export default function LoginPage({ history }) {
 
   const submitHandler = (e) => {
     e.preventDefault();
-    dispatch(login(email, password)); // <-- email first
+    dispatch(login(email, password));
   };
 
   const startGoogle = useGoogleLogin({
@@ -37,10 +39,18 @@ export default function LoginPage({ history }) {
       <div className="auth-card">
         <div className="auth-side">
           <div className="auth-brand">
-            <img src="/brand/logop.png" alt="Beauty Shop" />
+            <img
+              src="/brand/logop.png"
+              alt="Beauty Shop"
+              onError={(e) => {
+                e.currentTarget.src = "/logo512.png"; // fallback if missing
+              }}
+            />
           </div>
           <h2 className="auth-headline">Ravivez votre éclat ✨</h2>
-          <p className="auth-blurb">Des routines simples et efficaces. Connectez-vous pour poursuivre vos coups de cœur.</p>
+          <p className="auth-blurb">
+            Des routines simples et efficaces. Connectez-vous pour poursuivre vos coups de cœur.
+          </p>
           <ul className="auth-bullets">
             <li>Suivi de commandes</li>
             <li>Wishlist synchronisée</li>
@@ -88,7 +98,10 @@ export default function LoginPage({ history }) {
           </Form>
 
           <div className="auth-switch">
-            Pas de compte ? <Link to="/register">Créer un compte</Link>
+            Pas de compte ?{" "}
+            <Link to={`/register?redirect=${encodeURIComponent(redirect)}`}>
+              Créer un compte
+            </Link>
           </div>
         </div>
       </div>
