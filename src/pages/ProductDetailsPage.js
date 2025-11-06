@@ -8,6 +8,7 @@ import { useCart } from "../cart/CartProvider";
 import {
   CREATE_PRODUCT_RESET, DELETE_PRODUCT_RESET, UPDATE_PRODUCT_RESET, CARD_CREATE_RESET,
 } from "../constants";
+import { imgUrl } from "../utils/media";
 
 function ProductDetailsPage({ history, match }) {
   const dispatch = useDispatch();
@@ -34,12 +35,10 @@ function ProductDetailsPage({ history, match }) {
     [variants, variantId]
   );
 
-  // promo only on biggest variant (provided by backend)
   const promoVariantId = product?.promo_variant_id || null;
   const hasDiscount = !!product?.has_discount && !!promoVariantId;
   const percent = Number(product?.discount_percent || 0);
 
-  // prefer auto-selecting the promo variant when promo exists
   useEffect(() => {
     if (!variants.length) return;
     if (hasDiscount && promoVariantId && variantId == null) {
@@ -52,7 +51,6 @@ function ProductDetailsPage({ history, match }) {
     }
   }, [variants, hasDiscount, promoVariantId, variantId]);
 
-  // compute unit price: if selected is promo variant → use promo new price from backend; else its normal price
   const unitPrice = (() => {
     if (activeVariant) {
       if (hasDiscount && String(activeVariant.id) === String(promoVariantId)) {
@@ -60,7 +58,6 @@ function ProductDetailsPage({ history, match }) {
       }
       return Number(activeVariant.price || 0);
     }
-    // no variants case: fallback to product price/new_price (not used if you always have variants)
     if (hasDiscount) {
       return Number(product?.new_price || product?.price || 0);
     }
@@ -68,7 +65,6 @@ function ProductDetailsPage({ history, match }) {
   })();
 
   const total = unitPrice * qty;
-
   const fmtMAD = (v) =>
     new Intl.NumberFormat("fr-MA", { style: "currency", currency: "MAD" }).format(Number(v || 0));
 
@@ -84,7 +80,7 @@ function ProductDetailsPage({ history, match }) {
         id: pid,
         name: product?.name,
         price: unitPrice,
-        image: product?.image,
+        image: product?.image_url || product?.image,
         variantId: activeVariant ? activeVariant.id : null,
         variantLabel: activeVariant ? activeVariant.label : "",
       },
@@ -105,6 +101,8 @@ function ProductDetailsPage({ history, match }) {
     history.push("/");
     dispatch({ type: DELETE_PRODUCT_RESET });
   }
+
+  const imageSrc = imgUrl(product?.image_url || product?.image);
 
   return (
     <div>
@@ -134,7 +132,7 @@ function ProductDetailsPage({ history, match }) {
             <Col lg={6}>
               <div className="pd-media">
                 <div className="pd-media-frame">
-                  <img src={product?.image} alt={product?.name} />
+                  <img src={imageSrc} alt={product?.name} />
                   {hasDiscount && String(variantId) === String(promoVariantId) && (
                     <span className="pd-sale-badge pd-sale-badge--media">-{percent}%</span>
                   )}

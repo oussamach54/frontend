@@ -1,27 +1,24 @@
-// src/components/NavBar.js
-import React, { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { Navbar, Nav, Container, NavDropdown } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
-import './navbar.css';
+// src/components/Navbar.js
+import React, { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import { Navbar, Nav, Container, NavDropdown } from "react-bootstrap";
+import { LinkContainer } from "react-router-bootstrap";
+import "./navbar.css";
 
-function NavBar() {
-  const { userInfo } = useSelector((state) => state.userLoginReducer) || {};
+function AppNavbar() {
+  const { userInfo } = useSelector((s) => s.userLoginReducer) || {};
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
-    onScroll(); // initial
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
-    <div className={`navstrip-wrap ${scrolled ? 'is-scrolled' : ''}`}>
-      <Navbar
-        expand="lg"
-        className={`custom-navbar font-sans ${scrolled ? 'is-scrolled' : ''}`}
-      >
+    <div className={`navstrip-wrap ${scrolled ? "is-scrolled" : ""}`}>
+      <Navbar expand="lg" className={`custom-navbar font-sans ${scrolled ? "is-scrolled" : ""}`}>
         <Container>
           <Navbar.Toggle aria-controls="main-nav" />
           <Navbar.Collapse id="main-nav">
@@ -33,7 +30,6 @@ function NavBar() {
               <NavDropdown
                 title={<span className="nav-link-upp fw-600">TOUS LES PRODUITS</span>}
                 id="all-products"
-                menuVariant="light"
               >
                 <LinkContainer to="/products">
                   <NavDropdown.Item className="font-sans">Tous</NavDropdown.Item>
@@ -73,4 +69,4 @@ function NavBar() {
   );
 }
 
-export default NavBar;
+export default AppNavbar;

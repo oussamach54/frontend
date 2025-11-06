@@ -64,11 +64,10 @@ import {
    Helpers
 ----------------------------------------*/
 const normalizeUser = (data) => {
-  const token = data?.access || data?.token || "";
+  const token   = data?.access || data?.token || "";
   const refresh = data?.refresh || "";
-  const admin = !!(data?.admin ?? data?.is_staff ?? data?.isAdmin);
-  const user = { ...data, token, access: token, refresh, admin };
-  return user;
+  const admin   = !!(data?.admin ?? data?.is_staff ?? data?.isAdmin);
+  return { ...data, token, access: token, refresh, admin };
 };
 
 const authHeader = (getState) => {
@@ -93,12 +92,12 @@ export const login = (email, password) => async (dispatch) => {
     // SimpleJWT default endpoint
     const pair = await auth.tokenPair({ username: email, password });
 
-    // Optional: try to fetch profile; ignore if not present
+    // Optional profile fetch (ignore if not present)
     let profile = {};
     try {
       const { data } = await api.get("/api/users/profile/");
       profile = data || {};
-    } catch {}
+    } catch { /* ignore */ }
 
     const user = normalizeUser({ ...pair, ...profile, email });
     dispatch({ type: USER_LOGIN_SUCCESS, payload: user });
@@ -125,7 +124,7 @@ export const googleLogin = (idToken) => async (dispatch) => {
     const user = normalizeUser(data);
     dispatch({ type: USER_LOGIN_SUCCESS, payload: user });
     localStorage.setItem("userInfo", JSON.stringify(user));
-    if (user.access) localStorage.setItem("access", user.access);
+    if (user.access)  localStorage.setItem("access", user.access);
     if (user.refresh) localStorage.setItem("refresh", user.refresh);
   } catch (error) {
     dispatch({
@@ -170,19 +169,20 @@ export const register = (username, email, password) => async (dispatch) => {
 };
 
 /* ---------------------------------------
-   Token check (ADMIN pages use it)
+   Token check (used by admin pages)
 ----------------------------------------*/
 export const checkTokenValidation = () => async (dispatch) => {
   try {
     dispatch({ type: CHECK_TOKEN_VALID_REQUEST });
-    // any protected endpoint will do; we added this one in payments app
-    await api.get("/payments/check-token/");
+    // Your urls.py mounts payments under /api/payments/
+    await api.get("/api/payments/check-token/");
     dispatch({ type: CHECK_TOKEN_VALID_SUCCESS });
   } catch (error) {
     const msg =
       error?.response?.data?.detail ||
       error?.response?.data?.details ||
-      error.message;
+      error.message ||
+      "Unauthorized";
     dispatch({ type: CHECK_TOKEN_VALID_FAIL, payload: msg });
   }
 };
@@ -194,7 +194,10 @@ export const checkTokenValidation = () => async (dispatch) => {
 export const userDetails = (id) => async (dispatch, getState) => {
   try {
     dispatch({ type: USER_DETAILS_REQUEST });
-    const { data } = await api.get(`/api/account/user/${id}/`, authHeader(getState));
+    const { data } = await api.get(
+      `/api/account/user/${id}/`,
+      authHeader(getState)
+    );
     dispatch({ type: USER_DETAILS_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
@@ -210,9 +213,7 @@ export const userDetails = (id) => async (dispatch, getState) => {
 export const userUpdateDetails = (userData) => async (dispatch, getState) => {
   try {
     dispatch({ type: UPDATE_USER_DETAILS_REQUEST });
-    const {
-      userLoginReducer: { userInfo },
-    } = getState();
+    const { userLoginReducer: { userInfo } = {} } = getState();
     const { data } = await api.put(
       `/api/account/user_update/${userInfo.id}/`,
       {
@@ -296,47 +297,45 @@ export const getSingleAddress = (id) => async (dispatch, getState) => {
   }
 };
 
-export const createUserAddress =
-  (addressData) => async (dispatch, getState) => {
-    try {
-      dispatch({ type: CREATE_USER_ADDRESS_REQUEST });
-      const { data } = await api.post(
-        "/api/account/create-address/",
-        addressData,
-        authHeader(getState)
-      );
-      dispatch({ type: CREATE_USER_ADDRESS_SUCCESS, payload: data });
-    } catch (error) {
-      dispatch({
-        type: CREATE_USER_ADDRESS_FAIL,
-        payload:
-          error?.response?.data?.details ||
-          error?.response?.data?.detail ||
-          error.message,
-      });
-    }
-  };
+export const createUserAddress = (addressData) => async (dispatch, getState) => {
+  try {
+    dispatch({ type: CREATE_USER_ADDRESS_REQUEST });
+    const { data } = await api.post(
+      "/api/account/create-address/",
+      addressData,
+      authHeader(getState)
+    );
+    dispatch({ type: CREATE_USER_ADDRESS_SUCCESS, payload: data });
+  } catch (error) {
+    dispatch({
+      type: CREATE_USER_ADDRESS_FAIL,
+      payload:
+        error?.response?.data?.details ||
+        error?.response?.data?.detail ||
+        error.message,
+    });
+  }
+};
 
-export const updateUserAddress =
-  (id, addressData) => async (dispatch, getState) => {
-    try {
-      dispatch({ type: UPDATE_USER_ADDRESS_REQUEST });
-      const { data } = await api.put(
-        `/api/account/update-address/${id}/`,
-        addressData,
-        authHeader(getState)
-      );
-      dispatch({ type: UPDATE_USER_ADDRESS_SUCCESS, payload: data });
-    } catch (error) {
-      dispatch({
-        type: UPDATE_USER_ADDRESS_FAIL,
-        payload:
-          error?.response?.data?.details ||
-          error?.response?.data?.detail ||
-          error.message,
-      });
-    }
-  };
+export const updateUserAddress = (id, addressData) => async (dispatch, getState) => {
+  try {
+    dispatch({ type: UPDATE_USER_ADDRESS_REQUEST });
+    const { data } = await api.put(
+      `/api/account/update-address/${id}/`,
+      addressData,
+      authHeader(getState)
+    );
+    dispatch({ type: UPDATE_USER_ADDRESS_SUCCESS, payload: data });
+  } catch (error) {
+    dispatch({
+      type: UPDATE_USER_ADDRESS_FAIL,
+      payload:
+        error?.response?.data?.details ||
+        error?.response?.data?.detail ||
+        error.message,
+    });
+  }
+};
 
 export const deleteUserAddress = (id) => async (dispatch, getState) => {
   try {
@@ -368,13 +367,58 @@ export const getAllOrders = () => async (dispatch, getState) => {
       "/api/account/all-orders-list/",
       authHeader(getState)
     );
-  dispatch({ type: GET_ALL_ORDERS_SUCCESS, payload: data });
+    dispatch({ type: GET_ALL_ORDERS_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
       type: GET_ALL_ORDERS_FAIL,
       payload:
         error?.response?.data?.details ||
         error?.response?.data?.detail ||
+        error.message,
+    });
+  }
+};
+
+/* ---------------------------------------
+   Password Reset (to use the imported constants)
+----------------------------------------*/
+
+export const requestPasswordReset = (email) => async (dispatch) => {
+  try {
+    dispatch({ type: PASSWORD_RESET_REQUEST });
+    // Adjust these endpoints if your backend uses different paths
+    await api.post(
+      "/api/account/password-reset/",
+      { email },
+      { headers: { "Content-Type": "application/json" } }
+    );
+    dispatch({ type: PASSWORD_RESET_SUCCESS });
+  } catch (error) {
+    dispatch({
+      type: PASSWORD_RESET_FAIL,
+      payload:
+        error?.response?.data?.detail ||
+        error?.response?.data?.details ||
+        error.message,
+    });
+  }
+};
+
+export const confirmPasswordReset = ({ uid, token, new_password }) => async (dispatch) => {
+  try {
+    dispatch({ type: PASSWORD_RESET_CONFIRM_REQUEST });
+    await api.post(
+      "/api/account/password-reset-confirm/",
+      { uid, token, new_password },
+      { headers: { "Content-Type": "application/json" } }
+    );
+    dispatch({ type: PASSWORD_RESET_CONFIRM_SUCCESS });
+  } catch (error) {
+    dispatch({
+      type: PASSWORD_RESET_CONFIRM_FAIL,
+      payload:
+        error?.response?.data?.detail ||
+        error?.response?.data?.details ||
         error.message,
     });
   }

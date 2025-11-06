@@ -1,4 +1,4 @@
-// COMPLETE FILE
+// src/actions/productActions.js
 import api from "../api";
 import {
   PRODUCTS_LIST_REQUEST,
@@ -39,7 +39,8 @@ export const getProductsList = () => async (dispatch) => {
   try {
     dispatch({ type: PRODUCTS_LIST_REQUEST });
     const { data } = await api.get("/api/products/");
-    dispatch({ type: PRODUCTS_LIST_SUCCESS, payload: data });
+    const list = Array.isArray(data) ? data : (data?.results || []);
+    dispatch({ type: PRODUCTS_LIST_SUCCESS, payload: list });
   } catch (error) {
     dispatch({
       type: PRODUCTS_LIST_FAIL,
@@ -78,13 +79,11 @@ export const createProduct = (formData) => async (dispatch, getState) => {
       },
     };
 
-    // Try the new canonical route first
     try {
       const { data } = await api.post("/api/products/create/", formData, cfg);
       dispatch({ type: CREATE_PRODUCT_SUCCESS, payload: data });
       return data;
     } catch (e) {
-      // If 404 on new route, try the legacy route automatically
       if (e?.response?.status === 404) {
         const { data } = await api.post("/api/product-create/", formData, cfg);
         dispatch({ type: CREATE_PRODUCT_SUCCESS, payload: data });
@@ -177,3 +176,5 @@ export const changeDeliveryStatus = (id, payload) => async (dispatch, getState) 
     });
   }
 };
+   
+

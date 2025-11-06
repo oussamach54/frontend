@@ -1,29 +1,42 @@
-// src/store.js
-import { createStore, applyMiddleware } from 'redux';
-import { composeWithDevTools } from 'redux-devtools-extension';
-import thunk from 'redux-thunk';
-import axios from 'axios';
-import allReducers from './reducers/index';
+import { createStore, combineReducers, applyMiddleware } from "redux";
+import thunk from "redux-thunk";
+import { composeWithDevTools } from "redux-devtools-extension";
 
-const middleware = [thunk];
+import {
+  userLoginReducer,
+  userRegisterReducer,
+  userDetailsReducer,
+  userDetailsUpdateReducer,
+  checkTokenValidationReducer,
+} from "./reducers/userReducers";
 
-const userInfoFromStorage = localStorage.getItem('userInfo')
-  ? JSON.parse(localStorage.getItem('userInfo'))
-  : null;
+// combine your other reducers here (cart, products, wishlist, etc.)
+const rootReducer = combineReducers({
+  userLoginReducer,
+  userRegisterReducer,
+  userDetailsReducer,
+  userDetailsUpdateReducer,
+  checkTokenValidationReducer,
+  // ...other reducers
+});
 
-// ⬇️ set axios default Authorization header if we have a token
-if (userInfoFromStorage?.token) {
-  axios.defaults.headers.common['Authorization'] = `Bearer ${userInfoFromStorage.token}`;
-} else if (userInfoFromStorage?.access) {
-  axios.defaults.headers.common['Authorization'] = `Bearer ${userInfoFromStorage.access}`;
-}
+const userInfoFromStorage = (() => {
+  try {
+    const raw = localStorage.getItem("userInfo");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+})();
 
 const initialState = {
   userLoginReducer: { userInfo: userInfoFromStorage },
 };
 
+const middleware = [thunk];
+
 const store = createStore(
-  allReducers,
+  rootReducer,
   initialState,
   composeWithDevTools(applyMiddleware(...middleware))
 );

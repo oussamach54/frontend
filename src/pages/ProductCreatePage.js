@@ -1,4 +1,4 @@
-// COMPLETE FILE
+// src/pages/ProductCreatePage.js
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Form, Button } from "react-bootstrap";
@@ -15,11 +15,11 @@ export default function ProductCreatePage() {
   // Base fields
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState(""); // base price when no variants
+  const [price, setPrice] = useState("");
   const [stock, setStock] = useState(false);
   const [image, setImage] = useState(null);
 
-  // Extra fields
+  // Extra
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("other");
 
@@ -29,22 +29,17 @@ export default function ProductCreatePage() {
   ]);
 
   const addVariantRow = () =>
-    setVariants((v) => [
-      ...v,
-      { label: "", size_ml: "", price: "", in_stock: true, sku: "" },
-    ]);
+    setVariants((v) => [...v, { label: "", size_ml: "", price: "", in_stock: true, sku: "" }]);
 
   const removeVariantRow = (idx) =>
     setVariants((v) => v.filter((_, i) => i !== idx));
 
   const changeVariant = (idx, field, value) =>
-    setVariants((v) =>
-      v.map((row, i) => (i === idx ? { ...row, [field]: value } : row))
-    );
+    setVariants((v) => v.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
 
-  // reducers
+  // store
   const { userInfo } = useSelector((s) => s.userLoginReducer || {});
-  const { product, success, error } = useSelector((s) => s.createProductReducer || {});
+  const { product, error } = useSelector((s) => s.createProductReducer || {});
   const { error: tokenError } = useSelector((s) => s.checkTokenValidationReducer || {});
 
   useEffect(() => {
@@ -61,7 +56,7 @@ export default function ProductCreatePage() {
     const fd = new FormData();
     fd.append("name", name);
     fd.append("description", description);
-    fd.append("price", String(price).replace(",", ".")); // normalize decimal
+    fd.append("price", String(price).replace(",", "."));
     fd.append("stock", stock);
     if (image) fd.append("image", image);
     fd.append("brand", brand);
@@ -81,17 +76,16 @@ export default function ProductCreatePage() {
 
     try {
       const created = await dispatch(createProduct(fd));
-      // success via return; if you also dispatch to reducer, use that instead
       alert("Product successfully created.");
-      history.push(`/product/${created?.id || product?.id}/`);
+      const id = created?.id || product?.id;
+      if (id) history.push(`/product/${id}/`);
       dispatch({ type: CREATE_PRODUCT_RESET });
-    } catch (e) {
-      // reducer will capture error if you dispatch fail there; this is just a safeguard
-      console.error(e);
+    } catch (e2) {
+      console.error(e2);
     }
   };
 
-  if (userInfo && tokenError === "Request failed with status code 401") {
+  if (userInfo && tokenError === "Unauthorized") {
     alert("Session expired, please login again.");
     dispatch(logout());
     history.push("/login");
@@ -111,7 +105,6 @@ export default function ProductCreatePage() {
       </span>
 
       <Form onSubmit={onSubmit}>
-        {/* Name */}
         <Form.Group controlId="name">
           <Form.Label><b>Product Name</b></Form.Label>
           <Form.Control
@@ -123,7 +116,6 @@ export default function ProductCreatePage() {
           />
         </Form.Group>
 
-        {/* Description */}
         <Form.Group controlId="description">
           <Form.Label><b>Product Description</b></Form.Label>
           <Form.Control
@@ -134,7 +126,6 @@ export default function ProductCreatePage() {
           />
         </Form.Group>
 
-        {/* Brand */}
         <Form.Group controlId="brand">
           <Form.Label><b>Brand (Marque)</b></Form.Label>
           <Form.Control
@@ -144,7 +135,6 @@ export default function ProductCreatePage() {
           />
         </Form.Group>
 
-        {/* Category */}
         <Form.Group controlId="category">
           <Form.Label><b>Category</b></Form.Label>
           <Form.Control
@@ -161,7 +151,6 @@ export default function ProductCreatePage() {
           </Form.Control>
         </Form.Group>
 
-        {/* Base price */}
         <Form.Group controlId="price">
           <Form.Label><b>Price (base)</b></Form.Label>
           <Form.Control
@@ -174,7 +163,6 @@ export default function ProductCreatePage() {
           />
         </Form.Group>
 
-        {/* Stock */}
         <div className="d-flex align-items-center mb-3">
           <Form.Label className="mb-0">In Stock</Form.Label>
           <Form.Check
@@ -185,25 +173,16 @@ export default function ProductCreatePage() {
           />
         </div>
 
-        {/* Image */}
         <Form.Group controlId="image">
           <Form.Label><b>Product Image</b></Form.Label>
-          <Form.Control
-            type="file"
-            onChange={(e) => setImage(e.target.files[0])}
-          />
+          <Form.Control type="file" onChange={(e) => setImage(e.target.files[0])} />
         </Form.Group>
 
-        {/* Variants */}
         <Form.Group>
           <Form.Label><b>Sizes / Variants (optional)</b></Form.Label>
 
           {variants.map((row, i) => (
-            <div
-              key={i}
-              className="d-flex align-items-center mb-2"
-              style={{ gap: 8 }}
-            >
+            <div key={i} className="d-flex align-items-center mb-2" style={{ gap: 8 }}>
               <Form.Control
                 style={{ maxWidth: 240 }}
                 placeholder="Label (e.g. 500 ml)"
@@ -229,9 +208,7 @@ export default function ProductCreatePage() {
                 className="ml-2"
                 label="In stock"
                 checked={row.in_stock}
-                onChange={(e) =>
-                  changeVariant(i, "in_stock", e.target.checked)
-                }
+                onChange={(e) => changeVariant(i, "in_stock", e.target.checked)}
               />
               <Form.Control
                 style={{ maxWidth: 140 }}
@@ -250,12 +227,7 @@ export default function ProductCreatePage() {
             </div>
           ))}
 
-          <Button
-            variant="outline-secondary"
-            size="sm"
-            className="mt-2"
-            onClick={addVariantRow}
-          >
+          <Button variant="outline-secondary" size="sm" className="mt-2" onClick={addVariantRow}>
             + Add size
           </Button>
         </Form.Group>

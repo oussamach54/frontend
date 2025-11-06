@@ -1,29 +1,21 @@
-# ---- Build stage ----
-FROM node:18-alpine AS build
-WORKDIR /app
-
-# install deps
-COPY package*.json ./
-RUN npm ci --prefer-offline --no-audit --progress=false
-
-# copy source
-COPY . .
-
-# pass API base url at build time (optional)
-ARG REACT_APP_API_URL
-ENV REACT_APP_API_URL=$REACT_APP_API_URL
-
-# build production bundle
-RUN npm run build
-
 # ---- Serve stage ----
 FROM nginx:alpine
-# clean default and add SPA config
-RUN rm -f /etc/nginx/conf.d/default.conf
-COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# copy compiled app
+# SPA nginx config (no external file needed)
+RUN rm -f /etc/nginx/conf.d/default.conf && \
+    printf 'server {\n\
+  listen 80;\n\
+  server_name _;\n\
+  root /usr/share/nginx/html;\n\
+  index index.html;\n\
+  location / {\n\
+    try_files $uri /index.html;\n\
+  }\n\
+  location /health { return 200 "ok"; add_header Content-Type text/plain; }\n\
+  gzip on;\n\
+  gzip_types text/plain text/css application/javascript application/json image/svg+xml;\n\
+}\n' > /etc/nginx/conf.d/default.conf
+
 COPY --from=build /app/build /usr/share/nginx/html
-
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

@@ -22,13 +22,7 @@ function BrandSearch() {
   return (
     <div className="brand-search">
       {!open ? (
-        <Button
-          variant="link"
-          className="icon-link p-0"
-          onClick={() => setOpen(true)}
-          aria-label="Open search"
-          title="Recherche"
-        >
+        <Button variant="link" className="icon-link p-0" onClick={() => setOpen(true)} aria-label="Open search" title="Recherche">
           <i className="fas fa-search" />
         </Button>
       ) : (
@@ -44,12 +38,7 @@ function BrandSearch() {
             <Button type="submit" variant="dark" className="brand-search-btn">
               <i className="fas fa-search" />
             </Button>
-            <Button
-              variant="link"
-              className="brand-search-close"
-              onClick={() => setOpen(false)}
-              aria-label="Close search"
-            >
+            <Button variant="link" className="brand-search-close" onClick={() => setOpen(false)} aria-label="Close search">
               <i className="fas fa-times" />
             </Button>
           </InputGroup>
@@ -79,13 +68,10 @@ export default function BrandBar() {
     window.location.reload();
   };
 
-  // scroll listener: toggle .scrolled class
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    const onScroll = () => {
-      setScrolled(window.scrollY > 10);
-    };
-    window.addEventListener("scroll", onScroll);
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
@@ -96,65 +82,42 @@ export default function BrandBar() {
 
         <div className="brandbar-logo logo-center">
           <Link to="/" className="brand-logo-link" aria-label="Home">
-            <img
-              src="/brand/logop.png"
-              alt="Beauty Shop"
-              className="brand-logo-img"
-            />
+            <img src="/brand/logop.png" alt="Beauty Shop" className="brand-logo-img" />
           </Link>
         </div>
 
         <div className="brandbar-icons">
           <BrandSearch />
 
-          <Link
-            to="/wishlist"
-            title="Wishlist"
-            className="icon-link"
-            style={{ position: "relative" }}
-          >
+          <Link to="/wishlist" title="Wishlist" className="icon-link" style={{ position: "relative" }}>
             <i className="fas fa-heart" />
             {wishCount > 0 && <span className="icon-badge">{wishCount}</span>}
           </Link>
 
-          <Link
-            to="/cart"
-            title="Panier"
-            className="icon-link"
-            style={{ position: "relative" }}
-          >
+          <Link to="/cart" title="Panier" className="icon-link" style={{ position: "relative" }}>
             <i className="fas fa-shopping-bag" />
             {cartCount > 0 && <span className="icon-badge">{cartCount}</span>}
           </Link>
 
           {userInfo ? (
             <Dropdown align="end">
-              <Dropdown.Toggle
-                as="button"
-                className="icon-link btn btn-link p-0 brand-user-toggle"
-                aria-label="User menu"
-              >
+              <Dropdown.Toggle as="button" className="icon-link btn btn-link p-0 brand-user-toggle" aria-label="User menu">
                 <i className="fas fa-user" />
               </Dropdown.Toggle>
 
+              {/* No menuVariant prop here (RB v1) */}
               <Dropdown.Menu className="brand-user-menu">
                 <Dropdown.Header className="text-capitalize">
                   {userInfo.username}
                 </Dropdown.Header>
 
-                <Dropdown.Item as={Link} to="/account">
-                  Account Settings
-                </Dropdown.Item>
-                <Dropdown.Item as={Link} to="/all-orders/">
-                  All Orders
-                </Dropdown.Item>
+                <Dropdown.Item as={Link} to="/account">Account Settings</Dropdown.Item>
+                <Dropdown.Item as={Link} to="/all-orders/">All Orders</Dropdown.Item>
 
                 {userInfo.admin && (
                   <>
                     <Dropdown.Divider />
-                    <Dropdown.Item as={Link} to="/new-product/">
-                      Add Product
-                    </Dropdown.Item>
+                    <Dropdown.Item as={Link} to="/new-product/">Add Product</Dropdown.Item>
                   </>
                 )}
 

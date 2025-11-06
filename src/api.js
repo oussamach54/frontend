@@ -1,78 +1,77 @@
-// src/api.js
 import axios from "axios";
 
-/**
- * Base URL:
- * - Same origin by default (""), so /api/... is proxied in dev.
- * - To call a different origin, set REACT_APP_API_URL, e.g. "https://api.miniglowbyshay.cloud".
- */
-const RAW = process.env.REACT_APP_API_URL || "";
-const BASE = RAW.replace(/\/+$/, "");
+/** =========================
+ *  Base URL (Coolify / local)
+ *  ========================= */
+const RAW  = process.env.REACT_APP_API_URL || "";
+const BASE = RAW.replace(/\/+$/, ""); // strip trailing slash
 
 // localStorage keys
-const ACCESS_KEY = "access";
+const ACCESS_KEY  = "access";
 const REFRESH_KEY = "refresh";
 
-// Endpoints that are PUBLIC (no auth header, and safe to retry without it)
+// Public (no-auth) GET endpoints (safe to retry anonymously)
 const PUBLIC_GET_PATHS = [
   /^\/api\/products\/?$/i,
-  /^\/api\/brands\/?$/i,
   /^\/api\/product\/\d+\/?$/i,
-  /^\/api\/shipping-rates\/?$/i,            // product app
-  /^\/payments\/shipping-rates\/?$/i,       // payments app
+  /^\/api\/brands\/?$/i,
+  /^\/api\/shipping-rates\/?$/i,
+  /^\/payments\/shipping-rates\/?$/i,
 ];
 
-// Helpers
+// utilities
 const isLikelyJwt = (t) => typeof t === "string" && t.split(".").length === 3;
+
+const normalizePath = (rawUrl) => {
+  let url = String(rawUrl || "");
+  if (BASE && url.startsWith(BASE)) url = url.slice(BASE.length);
+  if (url.charAt(0) !== "/") url = `/${url}`;
+  const q = url.indexOf("?");
+  const h = url.indexOf("#");
+  const cut = Math.min(q === -1 ? url.length : q, h === -1 ? url.length : h);
+  return url.slice(0, cut);
+};
+
 const isPublicGet = (config) => {
   if ((config.method || "get").toLowerCase() !== "get") return false;
-  // Normalize URL path (strip base)
-  let path = config.url || "";
-  if (BASE && path.startsWith(BASE)) path = path.slice(BASE.length);
-  // Ensure it starts with '/'
-  if (path.charAt(0) !== "/") path = `/${path}`;
+  const path = normalizePath(config.url);
   return PUBLIC_GET_PATHS.some((re) => re.test(path));
 };
 
-// Create a single axios instance used everywhere
+// axios instance
 const api = axios.create({
   baseURL: BASE,
   timeout: 20000,
 });
 
-// Attach Authorization when appropriate
+/* ------------ Request: attach/remove auth ------------ */
 api.interceptors.request.use((config) => {
-  // Don’t send auth on public GETs
+  // always strip auth on public GETs
   if (isPublicGet(config)) {
     if (config.headers?.Authorization) delete config.headers.Authorization;
     return config;
   }
-
   const token =
-    localStorage.getItem(ACCESS_KEY) || localStorage.getItem("token"); // keep legacy key
+    localStorage.getItem(ACCESS_KEY) ||
+    localStorage.getItem("token"); // legacy key support
 
   if (token && isLikelyJwt(token)) {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   } else {
-    // bad/old token in storage → remove it to avoid 401 on public routes
+    // clean bad tokens
     localStorage.removeItem(ACCESS_KEY);
     localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem("token");
   }
-
   return config;
 });
 
-/** ---- Automatic refresh with SimpleJWT ---- */
+/* ------------ Response: refresh + safe anon retry ------------ */
 let refreshing = false;
 let queue = [];
-
-const flushQueue = (error, token = null) => {
-  queue.forEach(({ resolve, reject }) => {
-    if (error) reject(error);
-    else resolve(token);
-  });
+const flushQueue = (err, token = null) => {
+  queue.forEach(({ resolve, reject }) => (err ? reject(err) : resolve(token)));
   queue = [];
 };
 
@@ -81,43 +80,47 @@ api.interceptors.response.use(
   async (err) => {
     const { config, response } = err;
 
-    // If we got a 401 because the token is invalid, clear tokens and retry once
-    const body = response?.data;
-    const detail = body?.detail || body?.message || "";
-    const isInvalidToken =
-      response?.status === 401 &&
-      typeof detail === "string" &&
-      detail.toLowerCase().includes("token not valid");
-
-    if (isInvalidToken) {
-      // clear and optionally retry public GET without auth
+    // 1) Any 401 on a PUBLIC GET → retry once WITHOUT Authorization (anonymous)
+    if (response?.status === 401 && isPublicGet(config) && !config.__retriedWithoutAuth) {
+      const clone = { ...config, __retriedWithoutAuth: true };
+      if (clone.headers?.Authorization) delete clone.headers.Authorization;
       localStorage.removeItem(ACCESS_KEY);
       localStorage.removeItem(REFRESH_KEY);
       localStorage.removeItem("token");
+      return api(clone);
+    }
 
-      if (!config.__retriedWithoutAuth && isPublicGet(config)) {
-        const clone = { ...config, __retriedWithoutAuth: true };
-        if (clone.headers?.Authorization) delete clone.headers.Authorization;
-        return api(clone);
-      }
+    // 2) Explicit "token not valid" → clear tokens (no refresh attempt)
+    const detail = response?.data?.detail || response?.data?.message || "";
+    const invalidToken =
+      response?.status === 401 &&
+      typeof detail === "string" &&
+      detail.toLowerCase().includes("token not valid");
+    if (invalidToken) {
+      localStorage.removeItem(ACCESS_KEY);
+      localStorage.removeItem(REFRESH_KEY);
+      localStorage.removeItem("token");
       return Promise.reject(err);
     }
 
-    // Normal refresh flow for expired access token
+    // 3) Normal refresh flow for non-public requests
     const is401 = response?.status === 401;
-    if (!is401 || config.__isRetryRequest) return Promise.reject(err);
+    if (!is401 || config.__isRetryRequest || isPublicGet(config)) {
+      return Promise.reject(err);
+    }
 
     const refresh = localStorage.getItem(REFRESH_KEY);
     if (!refresh || !isLikelyJwt(refresh)) return Promise.reject(err);
 
     if (refreshing) {
+      // queue while we refresh
       return new Promise((resolve, reject) => {
         queue.push({
           resolve: (token) => {
-            config.headers = config.headers || {};
-            config.headers.Authorization = `Bearer ${token}`;
-            config.__isRetryRequest = true;
-            resolve(api(config));
+            const retry = { ...config, __isRetryRequest: true };
+            retry.headers = retry.headers || {};
+            retry.headers.Authorization = `Bearer ${token}`;
+            resolve(api(retry));
           },
           reject,
         });
@@ -129,14 +132,13 @@ api.interceptors.response.use(
       const { data } = await axios.post(`${BASE}/api/token/refresh/`, { refresh });
       const newAccess = data?.access;
       if (!newAccess) throw new Error("No access token from refresh");
-
       localStorage.setItem(ACCESS_KEY, newAccess);
       flushQueue(null, newAccess);
 
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${newAccess}`;
-      config.__isRetryRequest = true;
-      return api(config);
+      const retry = { ...config, __isRetryRequest: true };
+      retry.headers = retry.headers || {};
+      retry.headers.Authorization = `Bearer ${newAccess}`;
+      return api(retry);
     } catch (e) {
       flushQueue(e, null);
       localStorage.removeItem(ACCESS_KEY);
@@ -151,11 +153,12 @@ api.interceptors.response.use(
 
 export default api;
 
-// Optional helpers used by actions
+/* ------------ Small auth helper ------------ */
 export const auth = {
   async tokenPair({ username, password }) {
+    // DRF simplejwt default
     const { data } = await api.post(`/api/token/`, { username, password });
-    if (data?.access) localStorage.setItem(ACCESS_KEY, data.access);
+    if (data?.access)  localStorage.setItem(ACCESS_KEY, data.access);
     if (data?.refresh) localStorage.setItem(REFRESH_KEY, data.refresh);
     return data;
   },

@@ -1,12 +1,8 @@
-// src/routes/PrivateRoute.jsx
+// src/rootes/PrivateRoute.jsx
 import React from "react";
 import { Route, Redirect } from "react-router-dom";
 import { useSelector } from "react-redux";
 
-/**
- * Wrap protected pages with <PrivateRoute component={Page} path="/..." />
- * If not logged in, user is redirected to /login?redirect=<current-url>
- */
 export default function PrivateRoute({ component: Component, ...rest }) {
   const { userInfo } = useSelector((s) => s.userLoginReducer || {});
   return (
