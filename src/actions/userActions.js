@@ -60,9 +60,7 @@ import {
   PASSWORD_RESET_CONFIRM_FAIL,
 } from "../constants";
 
-// ----------------------------
-// helpers
-// ----------------------------
+// ----------------------- helpers -----------------------
 const ACCESS_KEY = "access";
 const REFRESH_KEY = "refresh";
 
@@ -88,22 +86,23 @@ const authHeader = (getState) => {
 };
 
 const remember = (user) => {
-  if (user?.access) localStorage.setItem(ACCESS_KEY, user.access);
-  if (user?.refresh) localStorage.setItem(REFRESH_KEY, user.refresh);
-  localStorage.setItem("userInfo", JSON.stringify(user));
+  try {
+    if (user?.access) localStorage.setItem(ACCESS_KEY, user.access);
+    if (user?.refresh) localStorage.setItem(REFRESH_KEY, user.refresh);
+    localStorage.setItem("userInfo", JSON.stringify(user));
+  } catch {}
 };
 
-// ----------------------------
-// AUTH
-// ----------------------------
+// ----------------------- AUTH -----------------------
 export const login = (email, password) => async (dispatch) => {
   dispatch({ type: USER_LOGIN_REQUEST });
 
-  // we try /account/login/ first (your app),
-  // then standard /api/token/ (SimpleJWT)
+  // Try both unprefixed and prefixed account endpoints, then both SimpleJWT endpoints
   const attempts = [
-    { url: "/account/login/", body: { username: email, password } },
-    { url: "/api/token/",     body: { username: email, password } },
+    { url: "/account/login/",       body: { username: email, password } },
+    { url: "/api/account/login/",   body: { username: email, password } },
+    { url: "/api/token/",           body: { username: email, password } },
+    { url: "/token/",               body: { username: email, password } },
   ];
 
   try {
@@ -111,15 +110,13 @@ export const login = (email, password) => async (dispatch) => {
 
     for (const a of attempts) {
       try {
-        const res = await api.post(a.url, a.body, {
-          headers: { "Content-Type": "application/json" },
-        });
+        const res = await api.post(a.url, a.body, { headers: { "Content-Type": "application/json" }});
         data = res.data;
         break;
       } catch (e) {
         lastErr = e;
-        // if 404 or 405, continue; other errors bubble
         const code = e?.response?.status;
+        // only keep looping on 404/405 (missing route); anything else we bubble up
         if (code && code !== 404 && code !== 405) throw e;
       }
     }
@@ -173,9 +170,7 @@ export const logout = () => (dispatch) => {
   dispatch({ type: CARD_CREATE_RESET });
 };
 
-// ----------------------------
-// Register
-// ----------------------------
+// ----------------------- Registration -----------------------
 export const register = (username, email, password) => async (dispatch) => {
   try {
     dispatch({ type: USER_REGISTER_REQUEST });
@@ -196,13 +191,11 @@ export const register = (username, email, password) => async (dispatch) => {
   }
 };
 
-// ----------------------------
-// Token/health check (admin pages)
-// ----------------------------
+// ----------------------- Token check -----------------------
 export const checkTokenValidation = () => async (dispatch, getState) => {
   try {
     dispatch({ type: CHECK_TOKEN_VALID_REQUEST });
-    // in this rollback tree, payments is mounted at /payments/
+    // health endpoint (public) — works whether you’re on / or /api/ reverse proxy
     await api.get("/payments/health/", authHeader(getState));
     dispatch({ type: CHECK_TOKEN_VALID_SUCCESS });
   } catch (error) {
@@ -217,9 +210,7 @@ export const checkTokenValidation = () => async (dispatch, getState) => {
   }
 };
 
-// ----------------------------
-// USER
-// ----------------------------
+// ----------------------- USER -----------------------
 export const userDetails = (id) => async (dispatch, getState) => {
   try {
     dispatch({ type: USER_DETAILS_REQUEST });
@@ -277,9 +268,7 @@ export const userAccountDelete = (userData) => async (dispatch, getState) => {
   }
 };
 
-// ----------------------------
-// Addresses
-// ----------------------------
+// ----------------------- Addresses -----------------------
 export const getAllAddress = () => async (dispatch, getState) => {
   try {
     dispatch({ type: GET_USER_ALL_ADDRESSES_REQUEST });
@@ -371,9 +360,7 @@ export const deleteUserAddress = (id) => async (dispatch, getState) => {
   }
 };
 
-// ----------------------------
-// Orders
-// ----------------------------
+// ----------------------- Orders -----------------------
 export const getAllOrders = () => async (dispatch, getState) => {
   try {
     dispatch({ type: GET_ALL_ORDERS_REQUEST });
@@ -390,9 +377,7 @@ export const getAllOrders = () => async (dispatch, getState) => {
   }
 };
 
-// ----------------------------
-// Password reset
-// ----------------------------
+// ----------------------- Password reset -----------------------
 export const requestPasswordReset = (email) => async (dispatch) => {
   try {
     dispatch({ type: PASSWORD_RESET_REQUEST });
