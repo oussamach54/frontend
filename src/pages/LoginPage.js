@@ -1,19 +1,15 @@
-// src/pages/LoginPage.js
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation } from "react-router-dom";
 import { Form, Button } from "react-bootstrap";
 import Message from "../components/Message";
-import { login } from "../actions/userActions";
-// NOTE: Google login temporarily disabled to avoid client_id error
-// import { googleLogin } from "../actions/userActions";
-// import { useGoogleLogin } from "@react-oauth/google";
+import { login, googleLogin } from "../actions/userActions";
+import { useGoogleLogin } from "@react-oauth/google";
 import "./login-register.css";
 
 export default function LoginPage({ history }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const dispatch = useDispatch();
   const { error, userInfo } = useSelector((s) => s.userLoginReducer || {});
   const { search } = useLocation();
@@ -25,26 +21,26 @@ export default function LoginPage({ history }) {
 
   const submitHandler = (e) => {
     e.preventDefault();
-    dispatch(login(email, password));
+    dispatch(login(email, password)); // <-- email first
   };
+
+  const startGoogle = useGoogleLogin({
+    flow: "implicit",
+    scope: "openid email profile",
+    onSuccess: async (resp) => {
+      if (resp?.access_token) dispatch(googleLogin(resp.access_token));
+    },
+  });
 
   return (
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-side">
           <div className="auth-brand">
-            <img
-              src="/brand/logop.png"
-              alt="Beauty Shop"
-              onError={(e) => {
-                e.currentTarget.src = "/logo512.png";
-              }}
-            />
+            <img src="/brand/logop.png" alt="Beauty Shop" />
           </div>
           <h2 className="auth-headline">Ravivez votre éclat ✨</h2>
-          <p className="auth-blurb">
-            Des routines simples et efficaces. Connectez-vous pour poursuivre vos coups de cœur.
-          </p>
+          <p className="auth-blurb">Des routines simples et efficaces. Connectez-vous pour poursuivre vos coups de cœur.</p>
           <ul className="auth-bullets">
             <li>Suivi de commandes</li>
             <li>Wishlist synchronisée</li>
@@ -83,7 +79,6 @@ export default function LoginPage({ history }) {
 
             <div className="d-flex justify-content-between align-items-center mb-4">
               <Link to="/forgot-password">Mot de passe oublié ?</Link>
-              {/* Google login button disabled until OAuth is configured */}
               {/* <Button variant="light" onClick={() => startGoogle()}>Se connecter avec Google</Button> */}
             </div>
 
@@ -93,10 +88,7 @@ export default function LoginPage({ history }) {
           </Form>
 
           <div className="auth-switch">
-            Pas de compte ?{" "}
-            <Link to={`/register?redirect=${encodeURIComponent(redirect)}`}>
-              Créer un compte
-            </Link>
+            Pas de compte ? <Link to="/register">Créer un compte</Link>
           </div>
         </div>
       </div>
