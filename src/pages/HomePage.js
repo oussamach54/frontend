@@ -1,7 +1,7 @@
 // src/pages/HomePage.js
 import React, { useEffect, useMemo, useState } from 'react';
 import { Container, Row, Col, Button, Spinner, Alert, Nav } from 'react-bootstrap';
-import axios from 'axios';
+import api from '../api';
 
 import "../components/HomeProducts.css";
 import HomeProductCard from "../components/HomeProductCard";
@@ -11,21 +11,12 @@ import SiteFooter from "../components/SiteFooter";
 import HScrollButtons from "../components/HScrollButtons";
 
 const CATS = [
-  { key: "face",    label: "VISAGE"   },
-  { key: "lips",    label: "LÈVRES"   },
-  { key: "eyes",    label: "YEUX"     },
-  { key: "eyebrow", label: "SOURCILS" },
-  { key: "hair",    label: "CHEVEUX"  },
+  { key: "face",    label: "VISAGE"  },
+  { key: "lips",    label: "LÈVRES"  },
+  { key: "eyes",    label: "YEUX"    },
+  { key: "eyebrow", label: "SOURCILS"},
+  { key: "hair",    label: "CHEVEUX" },
 ];
-
-// normalize any API shape into a plain array
-const toList = (d) => {
-  if (Array.isArray(d)) return d;
-  if (Array.isArray(d?.results)) return d.results;     // DRF pagination
-  if (Array.isArray(d?.data)) return d.data;           // some APIs nest under data
-  if (Array.isArray(d?.items)) return d.items;         // fallback pattern
-  return [];
-};
 
 export default function HomePage() {
   const [tab, setTab]           = useState("face");
@@ -45,14 +36,13 @@ export default function HomePage() {
     '/hero/banner5.jpg',
   ]), []);
 
-  // Featured products (first 12)
+  // Featured
   useEffect(() => {
     let ok = true;
     (async () => {
       try {
-        const { data } = await axios.get('/api/products/');
-        if (!ok) return;
-        setFeatured(toList(data).slice(0, 12));
+        const { data } = await api.get('/products/');
+        if (ok) setFeatured((data || []).slice(0, 12));
       } catch (e) {
         if (ok) setErrorFeatured(e?.response?.data?.detail || e.message);
       } finally {
@@ -62,7 +52,7 @@ export default function HomePage() {
     return () => { ok = false; };
   }, []);
 
-  // Category products
+  // Tabbed categories
   useEffect(() => {
     let alive = true;
     setLoading(true);
@@ -70,9 +60,9 @@ export default function HomePage() {
     setProducts([]);
     (async () => {
       try {
-        const { data } = await axios.get(`/api/products/?type=${encodeURIComponent(tab)}`);
+        const { data } = await api.get(`/products/?type=${encodeURIComponent(tab)}`);
         if (!alive) return;
-        setProducts(toList(data));
+        setProducts(Array.isArray(data) ? data : []);
       } catch (e) {
         if (alive) setError(e?.response?.data?.detail || e.message);
       } finally {
@@ -81,10 +71,6 @@ export default function HomePage() {
     })();
     return () => { alive = false; };
   }, [tab]);
-
-  // extra safety: never call .map on non-arrays
-  const featuredList = Array.isArray(featured) ? featured : [];
-  const productList  = Array.isArray(products) ? products : [];
 
   return (
     <>
@@ -97,7 +83,7 @@ export default function HomePage() {
           <p className="display-sub lead-tight font-sans mb-4">
             Safe, effective routines for hydration, brightening and barrier repair — shipped fast.
           </p>
-        <Button size="lg" variant="light" href="/products">Discover our products</Button>
+          <Button size="lg" variant="light" href="/products">Discover our products</Button>
         </div>
 
         <div className="hero-track">
@@ -129,9 +115,9 @@ export default function HomePage() {
         {errorFeatured && <Alert variant="danger">{errorFeatured}</Alert>}
 
         {!loadingFeatured && !errorFeatured && (
-          featuredList.length ? (
+          featured.length ? (
             <HScrollButtons step={340}>
-              {featuredList.map((p) => <HomeProductCard key={p.id} product={p} />)}
+              {featured.map((p) => <HomeProductCard key={p.id} product={p} />)}
             </HScrollButtons>
           ) : (
             <div className="text-center text-muted py-5 font-sans">
@@ -169,9 +155,9 @@ export default function HomePage() {
           {error && <Alert variant="danger">{error}</Alert>}
 
           {!loading && !error && (
-            productList.length ? (
+            products.length ? (
               <HScrollButtons step={340}>
-                {productList.map((p) => <HomeProductCard key={p.id} product={p} />)}
+                {products.map((p) => <HomeProductCard key={p.id} product={p} />)}
               </HScrollButtons>
             ) : (
               <div className="text-center text-muted py-5 font-sans">
@@ -199,8 +185,7 @@ export default function HomePage() {
             </Col>
             <Col md={7} className="video-col">
               <div className="video-wrapper">
-                {/* poster removed to avoid 404 since /video/preview.jpg doesn't exist */}
-                <video autoPlay loop muted playsInline className="skincare-video">
+                <video autoPlay loop muted playsInline className="skincare-video" poster="/video/preview.jpg">
                   <source src="/video/skincare.mp4" type="video/mp4" />
                   Votre navigateur ne supporte pas la lecture vidéo.
                 </video>
