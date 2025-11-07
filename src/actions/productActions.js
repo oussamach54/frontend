@@ -9,7 +9,7 @@ import {
 } from "../constants";
 import api from "../api";
 
-/* ---- PUBLIC ---- */
+/* ---------- PUBLIC ---------- */
 export const getProductsList = () => async (dispatch) => {
   try {
     dispatch({ type: PRODUCTS_LIST_REQUEST });
@@ -36,13 +36,32 @@ export const getProductDetails = (id) => async (dispatch) => {
   }
 };
 
-/* ---- AUTH ---- */
+/* ---------- AUTH ---------- */
 export const createProduct = (formData) => async (dispatch) => {
   try {
     dispatch({ type: CREATE_PRODUCT_REQUEST });
-    // Let the browser set multipart boundary automatically
-    const { data } = await api.post("/product-create/", formData);
-    dispatch({ type: CREATE_PRODUCT_SUCCESS, payload: data });
+
+    // Let the browser set the multipart boundary automatically
+    const res = await api.post("/product-create/", formData);
+    const { data, headers } = res;
+
+    // ✅ Normalize ID for both local & prod
+    let id =
+      data?.id ??
+      data?.pk ??
+      data?.product?.id ??
+      data?.product_id ??
+      null;
+
+    if (!id && headers?.location) {
+      // supports Location: /api/product/123/
+      const parts = String(headers.location).split("/").filter(Boolean);
+      const last = parts[parts.length - 1];
+      if (/^\d+$/.test(last)) id = Number(last);
+    }
+
+    const payload = { ...data, id }; // ensure .id exists when possible
+    dispatch({ type: CREATE_PRODUCT_SUCCESS, payload });
   } catch (error) {
     dispatch({
       type: CREATE_PRODUCT_FAIL,
