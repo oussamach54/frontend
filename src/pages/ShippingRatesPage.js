@@ -1,15 +1,14 @@
 // src/pages/ShippingRatesPage.js
 import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-import axios from "axios";
+import api from "../api";
 import "./shipping-rates.css";
 
-/* ✅ Use the payments app routes */
-const API_BASE   = "/payments";
-const LIST_URL   = `${API_BASE}/shipping-rates/`;            // GET (public), POST (admin)
-const ADMIN_URL  = `${API_BASE}/admin/shipping-rates/`;      // PUT/DELETE (admin)
+/** Endpoints */
+const PUBLIC_LIST = "/payments/shipping-rates/";            // GET (public)
+const ADMIN_BASE  = "/payments/admin/shipping-rates/";      // GET (admin), POST, PUT, DELETE
 
-/* fallback shown if API is down */
+/** Fallback when API unreachable */
 const FALLBACK_RATES = [
   { id: 1, city: "Agadir", price: 35 },
   { id: 2, city: "AFRA-nador", price: 45 },
@@ -25,10 +24,7 @@ const FALLBACK_RATES = [
 
 export default function ShippingRatesPage() {
   const { userInfo } = useSelector((s) => s.userLoginReducer || {});
-  const isAdmin = !!(userInfo && userInfo.admin);
-  const authCfg = isAdmin && userInfo?.token
-    ? { headers: { Authorization: `Bearer ${userInfo.token}` } }
-    : undefined;
+  const isAdmin = !!userInfo?.admin;
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,12 +39,12 @@ export default function ShippingRatesPage() {
   const [newPrice, setNewPrice] = useState("");
   const [apiReady, setApiReady] = useState(true);
 
-  // Load list
+  // Load list (public endpoint is enough to display)
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const { data } = await axios.get(LIST_URL);
+        const { data } = await api.get(PUBLIC_LIST);
         if (!alive) return;
         const normalized = (Array.isArray(data) ? data : []).map((r, i) => ({
           id: r.id ?? i + 1,
@@ -57,8 +53,8 @@ export default function ShippingRatesPage() {
         }));
         setRows(normalized);
         setApiReady(true);
+        setError(null);
       } catch {
-        // backend not reachable -> show fallback but keep page usable
         setApiReady(false);
         setRows(FALLBACK_RATES);
         setError(null);
@@ -84,7 +80,7 @@ export default function ShippingRatesPage() {
   const pageRows = filtered.slice(start, start + pageSize);
   const goto = (p) => setPage(Math.min(Math.max(1, p), totalPages));
 
-  // Create
+  // Create (POST must go to ADMIN_BASE)
   const addRate = async () => {
     const city = newCity.trim();
     const price = Number(newPrice);
@@ -94,15 +90,15 @@ export default function ShippingRatesPage() {
       if (apiReady) {
         if (!isAdmin) throw new Error("Vous devez être admin pour ajouter un tarif.");
         setSavingId("new");
-        const { data } = await axios.post(LIST_URL, { city, price, active: true }, authCfg);
+        const { data } = await api.post(ADMIN_BASE, { city, price, active: true });
         const created = { id: data.id, city: data.city || city, price: Number(data.price ?? price) };
         setRows((prev) => [...prev, created]);
       } else {
-        // local-only (no backend)
         setRows((prev) => [...prev, { id: Date.now(), city, price }]);
       }
       setNewCity("");
       setNewPrice("");
+      setError(null);
     } catch (e) {
       setError(e?.response?.data?.detail || e.message || "Erreur lors de l’ajout");
     } finally {
@@ -110,7 +106,7 @@ export default function ShippingRatesPage() {
     }
   };
 
-  // Update
+  // Update (PUT /payments/admin/shipping-rates/:id/)
   const updateRate = async (id, patch) => {
     const idx = rows.findIndex((r) => r.id === id);
     if (idx === -1) return;
@@ -122,13 +118,14 @@ export default function ShippingRatesPage() {
       if (apiReady) {
         if (!isAdmin) throw new Error("Vous devez être admin pour modifier.");
         setSavingId(id);
-        await axios.put(`${ADMIN_URL}${id}/`, { city: next.city, price: Number(next.price) }, authCfg);
+        await api.put(`${ADMIN_BASE}${id}/`, { city: next.city, price: Number(next.price) });
       }
       setRows((prev) => {
         const clone = prev.slice();
         clone[idx] = next;
         return clone;
       });
+      setError(null);
     } catch (e) {
       setError(e?.response?.data?.detail || e.message || "Erreur lors de la mise à jour");
     } finally {
@@ -136,7 +133,7 @@ export default function ShippingRatesPage() {
     }
   };
 
-  // Delete
+  // Delete (DELETE /payments/admin/shipping-rates/:id/)
   const deleteRate = async (id) => {
     const idx = rows.findIndex((r) => r.id === id);
     if (idx === -1) return;
@@ -146,9 +143,10 @@ export default function ShippingRatesPage() {
       if (apiReady) {
         if (!isAdmin) throw new Error("Vous devez être admin pour supprimer.");
         setSavingId(id);
-        await axios.delete(`${ADMIN_URL}${id}/`, authCfg);
+        await api.delete(`${ADMIN_BASE}${id}/`);
       }
       setRows((prev) => prev.filter((r) => r.id !== id));
+      setError(null);
     } catch (e) {
       setError(e?.response?.data?.detail || e.message || "Erreur lors de la suppression");
     } finally {
@@ -199,7 +197,7 @@ export default function ShippingRatesPage() {
               <thead>
                 <tr>
                   <th className="sr-th-city">Ville</th>
-                  <th>Tarif Livraison (DH)</th>
+                  <th>Tarif (DH)</th>
                 </tr>
               </thead>
               <tbody>
