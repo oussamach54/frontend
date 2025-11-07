@@ -1,33 +1,43 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import api from "../api";
+import "./BrandMarqueePro.css";
 
 export default function BrandMarquee() {
   const [brands, setBrands] = useState([]);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    let ok = true;
+    let alive = true;
     (async () => {
       try {
-        const { data } = await api.get("/brands/"); // public → NO auth
-        if (ok) setBrands(Array.isArray(data) ? data : []);
-      } catch (e) {
-        if (ok) setError(e?.response?.data?.detail || e.message);
-      }
+        const { data } = await api.get("/brands/");
+        if (alive) setBrands(Array.isArray(data) ? data : []);
+      } catch {/* non-blocking */}
     })();
-    return () => { ok = false; };
+    return () => { alive = false; };
   }, []);
 
-  if (error) return null;
-  if (!brands.length) return null;
+  // duplicate for seamless loop
+  const items = useMemo(() => {
+    const base = (brands || []).filter(Boolean);
+    const fallback = ["The Ordinary", "CeraVe", "Nuxe", "La Roche-Posay", "COSRX"];
+    const list = base.length ? base : fallback;
+    return [...list, ...list];
+  }, [brands]);
 
   return (
-    <div className="brandbar">
-      <div className="brandbar-inner container">
-        {brands.map((b) => (
-          <span className="brand-pill" key={b}>{b}</span>
-        ))}
+    <section className="bmpro-shell" aria-label="Brands">
+      <div className="bmpro-gradient" />
+      <div className="bmpro-inner">
+        <div className="bmpro-mask">
+          <ul className="bmpro-track bmpro-right">
+            {items.map((name, i) => (
+              <li key={`${name}-${i}`} className="bmpro-chip" title={name}>
+                <span className="bmpro-name">{name}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
