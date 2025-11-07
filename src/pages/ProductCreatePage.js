@@ -1,8 +1,8 @@
-// COMPLETE FILE
+// src/pages/ProductCreatePage.js
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Form, Button } from "react-bootstrap";
-import { useHistory } from "react-router";
+import { useHistory } from "react-router-dom"; // ✅ fix import
 import { createProduct } from "../actions/productActions";
 import { checkTokenValidation, logout } from "../actions/userActions";
 import { CREATE_PRODUCT_RESET } from "../constants";
@@ -15,11 +15,11 @@ export default function ProductCreatePage() {
   // Base fields
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState(""); // base price when no variants
+  const [price, setPrice] = useState(""); // base price (if no variants)
   const [stock, setStock] = useState(false);
   const [image, setImage] = useState(null);
 
-  // Extra fields
+  // New fields
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("other");
 
@@ -38,11 +38,9 @@ export default function ProductCreatePage() {
     setVariants((v) => v.filter((_, i) => i !== idx));
 
   const changeVariant = (idx, field, value) =>
-    setVariants((v) =>
-      v.map((row, i) => (i === idx ? { ...row, [field]: value } : row))
-    );
+    setVariants((v) => v.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
 
-  // reducers
+  // Reducers
   const { userInfo } = useSelector((s) => s.userLoginReducer || {});
   const { product, success, error } = useSelector((s) => s.createProductReducer || {});
   const { error: tokenError } = useSelector((s) => s.checkTokenValidationReducer || {});
@@ -55,14 +53,14 @@ export default function ProductCreatePage() {
     dispatch(checkTokenValidation());
   }, [dispatch, userInfo, history]);
 
-  const onSubmit = async (e) => {
+  const onSubmit = (e) => {
     e.preventDefault();
 
     const fd = new FormData();
     fd.append("name", name);
     fd.append("description", description);
-    fd.append("price", String(price).replace(",", ".")); // normalize decimal
-    fd.append("stock", stock);
+    fd.append("price", price);
+    fd.append("stock", stock ? "true" : "false");
     if (image) fd.append("image", image);
     fd.append("brand", brand);
     fd.append("category", category);
@@ -71,49 +69,63 @@ export default function ProductCreatePage() {
       .filter((v) => v.label && String(v.price) !== "")
       .map((v) => ({
         label: v.label,
-        size_ml: v.size_ml === "" ? null : Number(String(v.size_ml).replace(",", ".")),
-        price: Number(String(v.price).replace(",", ".")),
+        size_ml: v.size_ml === "" ? null : Number(v.size_ml),
+        price: Number(v.price),
         in_stock: !!v.in_stock,
         sku: v.sku || "",
       }));
 
     if (clean.length) fd.append("variants", JSON.stringify(clean));
 
-    try {
-      const created = await dispatch(createProduct(fd));
-      // success via return; if you also dispatch to reducer, use that instead
-      alert("Product successfully created.");
-      history.push(`/product/${created?.id || product?.id}/`);
-      dispatch({ type: CREATE_PRODUCT_RESET });
-    } catch (e) {
-      // reducer will capture error if you dispatch fail there; this is just a safeguard
-      console.error(e);
-    }
+    dispatch(createProduct(fd));
   };
 
-  if (userInfo && tokenError === "Request failed with status code 401") {
-    alert("Session expired, please login again.");
-    dispatch(logout());
-    history.push("/login");
-    window.location.reload();
-  }
+  // ✅ Redirect only when we truly have an id; otherwise go to /products
+  useEffect(() => {
+    if (!success) return;
+
+    const newId =
+      product?.id ??
+      product?.product?.id ??
+      product?.product_id ??
+      null;
+
+    if (newId) {
+      history.replace(`/product/${newId}/`);
+    } else {
+      history.replace("/products");
+    }
+    dispatch({ type: CREATE_PRODUCT_RESET });
+  }, [success, product, history, dispatch]);
+
+  // Session expired handling
+  useEffect(() => {
+    if (userInfo && tokenError === "Request failed with status code 401") {
+      alert("Session expired, please login again.");
+      dispatch(logout());
+      history.push("/login");
+      window.location.reload();
+    }
+  }, [userInfo, tokenError, dispatch, history]);
 
   return (
-    <div className="container py-4">
+    <div>
       {error && (
         <Message variant="danger">
           {error.image ? error.image[0] : String(error)}
         </Message>
       )}
 
-      <span className="d-flex justify-content-center text-info mb-3">
+      <span className="d-flex justify-content-center text-info">
         <em>New Product</em>
       </span>
 
       <Form onSubmit={onSubmit}>
         {/* Name */}
         <Form.Group controlId="name">
-          <Form.Label><b>Product Name</b></Form.Label>
+          <Form.Label>
+            <b>Product Name</b>
+          </Form.Label>
           <Form.Control
             required
             autoFocus
@@ -125,7 +137,9 @@ export default function ProductCreatePage() {
 
         {/* Description */}
         <Form.Group controlId="description">
-          <Form.Label><b>Product Description</b></Form.Label>
+          <Form.Label>
+            <b>Product Description</b>
+          </Form.Label>
           <Form.Control
             required
             value={description}
@@ -136,7 +150,9 @@ export default function ProductCreatePage() {
 
         {/* Brand */}
         <Form.Group controlId="brand">
-          <Form.Label><b>Brand (Marque)</b></Form.Label>
+          <Form.Label>
+            <b>Brand (Marque)</b>
+          </Form.Label>
           <Form.Control
             value={brand}
             placeholder="Ex. The Ordinary"
@@ -146,7 +162,9 @@ export default function ProductCreatePage() {
 
         {/* Category */}
         <Form.Group controlId="category">
-          <Form.Label><b>Category</b></Form.Label>
+          <Form.Label>
+            <b>Category</b>
+          </Form.Label>
           <Form.Control
             as="select"
             value={category}
@@ -163,11 +181,14 @@ export default function ProductCreatePage() {
 
         {/* Base price */}
         <Form.Group controlId="price">
-          <Form.Label><b>Price (base)</b></Form.Label>
+          <Form.Label>
+            <b>Price (base)</b>
+          </Form.Label>
           <Form.Control
             required
             type="number"
             step="0.01"
+            maxLength="8"
             value={price}
             placeholder="199.99"
             onChange={(e) => setPrice(e.target.value)}
@@ -187,16 +208,17 @@ export default function ProductCreatePage() {
 
         {/* Image */}
         <Form.Group controlId="image">
-          <Form.Label><b>Product Image</b></Form.Label>
-          <Form.Control
-            type="file"
-            onChange={(e) => setImage(e.target.files[0])}
-          />
+          <Form.Label>
+            <b>Product Image</b>
+          </Form.Label>
+          <Form.Control type="file" onChange={(e) => setImage(e.target.files[0])} />
         </Form.Group>
 
         {/* Variants */}
         <Form.Group>
-          <Form.Label><b>Sizes / Variants (optional)</b></Form.Label>
+          <Form.Label>
+            <b>Sizes / Variants (optional)</b>
+          </Form.Label>
 
           {variants.map((row, i) => (
             <div
