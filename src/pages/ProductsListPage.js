@@ -1,89 +1,88 @@
-// src/pages/ProductsListPage.js
 import React, { useEffect, useMemo, useState } from "react";
+import { Container, Row, Col, Spinner, Alert, Form } from "react-bootstrap";
 import api from "../api";
-import { Container, Spinner, Alert } from "react-bootstrap";
-import { useLocation } from "react-router-dom";
-
-import "../components/HomeProducts.css";
 import HomeProductCard from "../components/HomeProductCard";
+import "../components/HomeProducts.css";
 
-function useQS() {
-  const { search } = useLocation();
-  return useMemo(() => new URLSearchParams(search), [search]);
-}
+const CATS = [
+  { key: "face",    label: "VISAGE"  },
+  { key: "lips",    label: "LÈVRES"  },
+  { key: "eyes",    label: "YEUX"    },
+  { key: "eyebrow", label: "SOURCILS"},
+  { key: "hair",    label: "CHEVEUX" },
+];
 
 export default function ProductsListPage() {
-  const qs = useQS();
-  const typeFromURL  = (qs.get("type")  || "").toLowerCase();
-  const brandFromURL = qs.get("brand") || "";
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [items, setItems]     = useState([]);
 
-  const [products, setProducts] = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
   const [q, setQ] = useState("");
+  const [cat, setCat] = useState("");
+
+  const filtered = useMemo(() => {
+    const s = (q || "").trim().toLowerCase();
+    return items.filter(p => {
+      const okCat = !cat || (p.category || "").toLowerCase() === cat;
+      if (!s) return okCat;
+      const hay = `${p.name || ""} ${p.description || ""}`.toLowerCase();
+      return okCat && hay.includes(s);
+    });
+  }, [items, q, cat]);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError(null);
-
-    api
-      .get("/api/products/", {
-        params: {
-          type:  typeFromURL  || undefined,
-          brand: brandFromURL || undefined,
-        },
-      })
-      .then(({ data }) => alive && setProducts(Array.isArray(data) ? data : []))
-      .catch((e) => alive && setError(e?.response?.data?.detail || e.message))
-      .finally(() => alive && setLoading(false));
-
+    (async () => {
+      try {
+        // IMPORTANT: use the shared api client (baseURL already includes /api)
+        const { data } = await api.get("/products/");
+        if (!alive) return;
+        setItems(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!alive) return;
+        setError(e?.response?.data?.detail || e.message);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
     return () => { alive = false; };
-  }, [typeFromURL, brandFromURL]);
-
-  const byType = useMemo(() => {
-    if (!typeFromURL) return products;
-    return products.filter((p) => {
-      const t1 = (p.type || "").toLowerCase();
-      const t2 = (p.category || "").toLowerCase();
-      return t1 === typeFromURL || t2 === typeFromURL;
-    });
-  }, [products, typeFromURL]);
-
-  const byBrand = useMemo(() => {
-    if (!brandFromURL) return byType;
-    const needle = brandFromURL.toLowerCase();
-    return byType.filter((p) => (p.brand || "").toLowerCase() === needle);
-  }, [byType, brandFromURL]);
-
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return byBrand;
-    return byBrand.filter((p) =>
-      (p.name || "").toLowerCase().includes(needle) ||
-      (p.description || "").toLowerCase().includes(needle)
-    );
-  }, [byBrand, q]);
-
-  const title = brandFromURL
-    ? `Produits — ${brandFromURL}`
-    : typeFromURL
-    ? `Produits — ${typeFromURL}`
-    : "Tous les produits";
+  }, []);
 
   return (
     <Container className="py-5">
-      <div className="d-flex flex-wrap align-items-center justify-content-between mb-3">
-        <h2 className="m-0 font-display fw-700">{title}</h2>
+      <Row className="align-items-center mb-3">
+        <Col>
+          <h2 className="m-0 font-display fw-700">Tous les produits</h2>
+        </Col>
+        <Col md="6">
+          <Form.Control
+            placeholder="Rechercher un produit..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </Col>
+      </Row>
 
-        <input
-          type="search"
-          className="form-control"
-          placeholder="Rechercher un produit…"
-          style={{ minWidth: 280, maxWidth: 420 }}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
+      <div className="mb-3 d-flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={`hp-tab ${cat === "" ? "is-active" : ""}`}
+          onClick={() => setCat("")}
+        >
+          Tous
+        </button>
+        {CATS.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            className={`hp-tab ${cat === key ? "is-active" : ""}`}
+            onClick={() => setCat(key)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {loading && (
@@ -99,7 +98,9 @@ export default function ProductsListPage() {
             {filtered.map((p) => <HomeProductCard key={p.id} product={p} />)}
           </div>
         ) : (
-          <div className="text-center text-muted py-5">Aucun produit trouvé.</div>
+          <div className="text-center text-muted py-5 font-sans">
+            Aucun produit à afficher.
+          </div>
         )
       )}
     </Container>
