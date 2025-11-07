@@ -1,10 +1,10 @@
 // src/api.js
 import axios from "axios";
 
-/** Decide backend base URL */
+/** Pick the correct API origin (local vs prod) */
 function chooseBaseURL() {
   const env = (process.env.REACT_APP_API_URL || "").trim();
-  if (env) return env; // e.g. "https://api.miniglowbyshay.cloud"
+  if (env) return env; // e.g. https://api.miniglowbyshay.cloud
 
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
@@ -15,40 +15,68 @@ function chooseBaseURL() {
   return "http://localhost:8000";
 }
 
-/* 🔧 Make sure no global axios default leaks into requests */
-delete axios.defaults?.headers?.common?.Authorization;
+/** Env-scoped storage keys so local/prod don’t clash */
+export function storageKeys() {
+  const isProd =
+    typeof window !== "undefined" &&
+    window.location.hostname.endsWith("miniglowbyshay.cloud");
+
+  return {
+    user: "userInfo",
+    access: isProd ? "access_prod" : "access_local",
+    refresh: isProd ? "refresh_prod" : "refresh_local",
+  };
+}
+
+export function saveToken(token, refresh) {
+  const { access, refresh: rKey } = storageKeys();
+  if (token) {
+    localStorage.setItem(access, token);
+    // legacy keys some code still reads
+    localStorage.setItem("access", token);
+    localStorage.setItem("token", token);
+  }
+  if (refresh) {
+    localStorage.setItem(rKey, refresh);
+    localStorage.setItem("refresh", refresh);
+  }
+}
+
+export function readToken() {
+  const { access } = storageKeys();
+  return (
+    localStorage.getItem(access) ||
+    localStorage.getItem("access") ||
+    localStorage.getItem("token")
+  );
+}
+
+export function clearTokens() {
+  const { access, refresh } = storageKeys();
+  localStorage.removeItem(access);
+  localStorage.removeItem(refresh);
+  localStorage.removeItem("access");
+  localStorage.removeItem("token");
+  localStorage.removeItem("refresh");
+}
 
 const api = axios.create({
-  baseURL: `${chooseBaseURL()}/api`,
+  baseURL: `${chooseBaseURL()}/api`, // we always call relative paths like "/products/"
   timeout: 20000,
 });
 
-/**
- * We ONLY send Authorization if the caller asks for it with `_authRequired: true`.
- * Also, if there is any Authorization header attached accidentally, we strip it.
- */
+/** Attach JWT automatically if present */
 api.interceptors.request.use((config) => {
-  // defensive: never let a stray Authorization leak onto public requests
-  if (!config._authRequired && config.headers?.Authorization) {
-    delete config.headers.Authorization;
-  }
-
-  if (config._authRequired) {
-    const token =
-      localStorage.getItem("access") || localStorage.getItem("token");
-    if (token && token !== "undefined" && token !== "null") {
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    delete config._authRequired; // don’t send our custom flag
-  }
+  const token = readToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 api.interceptors.response.use(
-  (r) => r,
+  (res) => res,
   (err) => {
-    console.error("API error:", err?.response || err?.message);
+    // eslint-disable-next-line no-console
+    console.error("API error:", err?.response || err.message);
     return Promise.reject(err);
   }
 );
