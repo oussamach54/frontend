@@ -1,6 +1,5 @@
-// src/pages/ProductsListPage.js
 import React, { useEffect, useMemo, useState } from "react";
-import api from "../api";
+import axios from "axios";
 import { Container, Spinner, Alert } from "react-bootstrap";
 import { useLocation } from "react-router-dom";
 
@@ -15,7 +14,7 @@ function useQS() {
 export default function ProductsListPage() {
   const qs = useQS();
   const typeFromURL  = (qs.get("type")  || "").toLowerCase();
-  const brandFromURL = qs.get("brand") || "";
+  const brandFromURL = qs.get("brand") || ""; // 👈 NEW
 
   const [products, setProducts] = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -27,11 +26,11 @@ export default function ProductsListPage() {
     setLoading(true);
     setError(null);
 
-    api
+    axios
       .get("/api/products/", {
         params: {
           type:  typeFromURL  || undefined,
-          brand: brandFromURL || undefined,
+          brand: brandFromURL || undefined, // 👈 NEW
         },
       })
       .then(({ data }) => alive && setProducts(Array.isArray(data) ? data : []))
@@ -41,6 +40,7 @@ export default function ProductsListPage() {
     return () => { alive = false; };
   }, [typeFromURL, brandFromURL]);
 
+  // client-side safety: ensure both filters apply even if API didn’t
   const byType = useMemo(() => {
     if (!typeFromURL) return products;
     return products.filter((p) => {

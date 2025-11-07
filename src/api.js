@@ -1,56 +1,83 @@
 // src/api.js
 import axios from "axios";
 
-/**
- * Choose the correct API base URL depending on where the app runs.
- *  - In production → use https://api.miniglowbyshay.cloud
- *  - In local dev → use http://localhost:8000
- *  - Or override with REACT_APP_API_URL
- */
+/** Pick the correct API origin (local vs prod) */
 function chooseBaseURL() {
-  // 1️⃣ Check environment variable first (preferred)
-  const env = process.env.REACT_APP_API_URL?.trim();
-  if (env) return env; // Example: "https://api.miniglowbyshay.cloud"
+  const env = (process.env.REACT_APP_API_URL || "").trim();
+  if (env) return env; // e.g. https://api.miniglowbyshay.cloud
 
-  // 2️⃣ Auto-detect based on hostname
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
-    // On your production frontend domain
     if (host.endsWith("miniglowbyshay.cloud") && !host.startsWith("api.")) {
       return "https://api.miniglowbyshay.cloud";
     }
   }
-
-  // 3️⃣ Default to local backend
   return "http://localhost:8000";
 }
 
-// Create the Axios instance
+/** Env-scoped storage keys so local/prod don’t clash */
+export function storageKeys() {
+  const isProd =
+    typeof window !== "undefined" &&
+    window.location.hostname.endsWith("miniglowbyshay.cloud");
+
+  return {
+    user: "userInfo",
+    access: isProd ? "access_prod" : "access_local",
+    refresh: isProd ? "refresh_prod" : "refresh_local",
+  };
+}
+
+export function saveToken(token, refresh) {
+  const { access, refresh: rKey } = storageKeys();
+  if (token) {
+    localStorage.setItem(access, token);
+    // legacy keys some code still reads
+    localStorage.setItem("access", token);
+    localStorage.setItem("token", token);
+  }
+  if (refresh) {
+    localStorage.setItem(rKey, refresh);
+    localStorage.setItem("refresh", refresh);
+  }
+}
+
+export function readToken() {
+  const { access } = storageKeys();
+  return (
+    localStorage.getItem(access) ||
+    localStorage.getItem("access") ||
+    localStorage.getItem("token")
+  );
+}
+
+export function clearTokens() {
+  const { access, refresh } = storageKeys();
+  localStorage.removeItem(access);
+  localStorage.removeItem(refresh);
+  localStorage.removeItem("access");
+  localStorage.removeItem("token");
+  localStorage.removeItem("refresh");
+}
+
 const api = axios.create({
-  baseURL: `${chooseBaseURL()}/api`, // All calls go to /api/... endpoints
+  baseURL: `${chooseBaseURL()}/api`, // we always call relative paths like "/products/"
   timeout: 20000,
 });
 
-// 🔐 Attach JWT access token automatically if present
+/** Attach JWT automatically if present */
 api.interceptors.request.use((config) => {
-  try {
-    const token =
-      localStorage.getItem("access") || localStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  } catch (err) {
-    console.warn("JWT token read error:", err);
-  }
+  const token = readToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Optional: Log API errors for debugging
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error("API error:", error?.response || error.message);
-    return Promise.reject(error);
+  (res) => res,
+  (err) => {
+    // eslint-disable-next-line no-console
+    console.error("API error:", err?.response || err.message);
+    return Promise.reject(err);
   }
 );
 

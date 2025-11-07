@@ -1,26 +1,33 @@
-// COMPLETE FILE
+// src/pages/ShippingRatesPage.js
 import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-import api from "../api";
+import axios from "axios";
 import "./shipping-rates.css";
 
-/** Always behind /api in production (Nginx proxies /api -> Django) */
-const API_BASE  = "/api/payments";
-const LIST_URL  = `${API_BASE}/shipping-rates/`;        // GET (public), POST (admin)
-const ADMIN_URL = `${API_BASE}/admin/shipping-rates/`;  // PUT/DELETE (admin)
+/* ✅ Use the payments app routes */
+const API_BASE   = "/payments";
+const LIST_URL   = `${API_BASE}/shipping-rates/`;            // GET (public), POST (admin)
+const ADMIN_URL  = `${API_BASE}/admin/shipping-rates/`;      // PUT/DELETE (admin)
 
-// Optional local fallback if API is down
+/* fallback shown if API is down */
 const FALLBACK_RATES = [
   { id: 1, city: "Agadir", price: 35 },
-  { id: 2, city: "Nador", price: 45 },
+  { id: 2, city: "AFRA-nador", price: 45 },
+  { id: 3, city: "Afourar - Beni-Mellal", price: 45 },
+  { id: 4, city: "aazayeb-chefchaouen", price: 45 },
+  { id: 5, city: "Nowasser-chichaoua", price: 45 },
+  { id: 6, city: "MEHDIA", price: 45 },
+  { id: 7, city: "Lalla Fatna", price: 45 },
+  { id: 8, city: "Kasbah El Taher", price: 45 },
+  { id: 9, city: "jamaat fdala", price: 40 },
+  { id: 10, city: "ighram laalam-beni mellal", price: 45 },
 ];
 
 export default function ShippingRatesPage() {
   const { userInfo } = useSelector((s) => s.userLoginReducer || {});
   const isAdmin = !!(userInfo && userInfo.admin);
-  const token = userInfo?.access || userInfo?.token;
-  const authCfg = isAdmin && token
-    ? { headers: { Authorization: `Bearer ${token}` } }
+  const authCfg = isAdmin && userInfo?.token
+    ? { headers: { Authorization: `Bearer ${userInfo.token}` } }
     : undefined;
 
   const [rows, setRows] = useState([]);
@@ -41,7 +48,7 @@ export default function ShippingRatesPage() {
     let alive = true;
     (async () => {
       try {
-        const { data } = await api.get(LIST_URL);
+        const { data } = await axios.get(LIST_URL);
         if (!alive) return;
         const normalized = (Array.isArray(data) ? data : []).map((r, i) => ({
           id: r.id ?? i + 1,
@@ -51,6 +58,7 @@ export default function ShippingRatesPage() {
         setRows(normalized);
         setApiReady(true);
       } catch {
+        // backend not reachable -> show fallback but keep page usable
         setApiReady(false);
         setRows(FALLBACK_RATES);
         setError(null);
@@ -58,9 +66,7 @@ export default function ShippingRatesPage() {
         if (alive) setLoading(false);
       }
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, []);
 
   const filtered = useMemo(() => {
@@ -88,14 +94,11 @@ export default function ShippingRatesPage() {
       if (apiReady) {
         if (!isAdmin) throw new Error("Vous devez être admin pour ajouter un tarif.");
         setSavingId("new");
-        const { data } = await api.post(
-          LIST_URL,
-          { city, price, active: true },
-          authCfg
-        );
+        const { data } = await axios.post(LIST_URL, { city, price, active: true }, authCfg);
         const created = { id: data.id, city: data.city || city, price: Number(data.price ?? price) };
         setRows((prev) => [...prev, created]);
       } else {
+        // local-only (no backend)
         setRows((prev) => [...prev, { id: Date.now(), city, price }]);
       }
       setNewCity("");
@@ -119,11 +122,7 @@ export default function ShippingRatesPage() {
       if (apiReady) {
         if (!isAdmin) throw new Error("Vous devez être admin pour modifier.");
         setSavingId(id);
-        await api.put(
-          `${ADMIN_URL}${id}/`,
-          { city: next.city, price: Number(next.price) },
-          authCfg
-        );
+        await axios.put(`${ADMIN_URL}${id}/`, { city: next.city, price: Number(next.price) }, authCfg);
       }
       setRows((prev) => {
         const clone = prev.slice();
@@ -147,7 +146,7 @@ export default function ShippingRatesPage() {
       if (apiReady) {
         if (!isAdmin) throw new Error("Vous devez être admin pour supprimer.");
         setSavingId(id);
-        await api.delete(`${ADMIN_URL}${id}/`, authCfg);
+        await axios.delete(`${ADMIN_URL}${id}/`, authCfg);
       }
       setRows((prev) => prev.filter((r) => r.id !== id));
     } catch (e) {
@@ -172,9 +171,7 @@ export default function ShippingRatesPage() {
             }}
           >
             {[10, 25, 50, 100].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
+              <option key={n} value={n}>{n}</option>
             ))}
           </select>{" "}
           entrées
@@ -185,10 +182,7 @@ export default function ShippingRatesPage() {
           <input
             type="search"
             value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => { setQ(e.target.value); setPage(1); }}
             placeholder="Ville…"
           />
         </label>
@@ -211,9 +205,7 @@ export default function ShippingRatesPage() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={2} className="sr-empty">
-                      Aucune entrée.
-                    </td>
+                    <td colSpan={2} className="sr-empty">Aucune entrée.</td>
                   </tr>
                 ) : (
                   pageRows.map((r) => (
@@ -229,6 +221,32 @@ export default function ShippingRatesPage() {
         )}
       </div>
 
+      {!loading && (!error || !apiReady) && (
+        <div className="sr-footer">
+          <div className="sr-count">
+            Affichage de {pageRows.length ? start + 1 : 0} à {Math.min(start + pageSize, filtered.length)} sur {filtered.length} entrées
+          </div>
+          <div className="sr-pager">
+            <button onClick={() => goto(currentPage - 1)} disabled={currentPage === 1}>Précédente</button>
+            {Array.from({ length: Math.min(totalPages, 7) }).map((_, i) => {
+              const p = i + 1;
+              return (
+                <button key={p} onClick={() => goto(p)} className={p === currentPage ? "is-active" : ""}>
+                  {p}
+                </button>
+              );
+            })}
+            {totalPages > 7 && <span className="sr-dots">…</span>}
+            {totalPages > 7 && (
+              <button onClick={() => goto(totalPages)} className={currentPage === totalPages ? "is-active" : ""}>
+                {totalPages}
+              </button>
+            )}
+            <button onClick={() => goto(currentPage + 1)} disabled={currentPage === totalPages}>Suivante</button>
+          </div>
+        </div>
+      )}
+
       {isAdmin && (
         <div className="sr-admin">
           <h2 className="sr-admin-title">Administration des tarifs</h2>
@@ -240,24 +258,9 @@ export default function ShippingRatesPage() {
           )}
 
           <div className="sr-admin-add">
-            <input
-              className="sr-input"
-              placeholder="Ville"
-              value={newCity}
-              onChange={(e) => setNewCity(e.target.value)}
-            />
-            <input
-              className="sr-input"
-              placeholder="Tarif (DH)"
-              inputMode="numeric"
-              value={newPrice}
-              onChange={(e) => setNewPrice(e.target.value)}
-            />
-            <button
-              className="sr-btn sr-btn-primary"
-              onClick={addRate}
-              disabled={savingId === "new"}
-            >
+            <input className="sr-input" placeholder="Ville" value={newCity} onChange={(e) => setNewCity(e.target.value)} />
+            <input className="sr-input" placeholder="Tarif (DH)" inputMode="numeric" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} />
+            <button className="sr-btn sr-btn-primary" onClick={addRate} disabled={savingId === "new"}>
               {savingId === "new" ? "…" : "Ajouter"}
             </button>
           </div>
@@ -283,56 +286,11 @@ export default function ShippingRatesPage() {
                     />
                   ))}
                   {rows.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="sr-empty">
-                        Aucun tarif.
-                      </td>
-                    </tr>
+                    <tr><td colSpan={3} className="sr-empty">Aucun tarif.</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-      )}
-
-      {!loading && (!error || !apiReady) && (
-        <div className="sr-footer">
-          <div className="sr-count">
-            Affichage de {pageRows.length ? start + 1 : 0} à{" "}
-            {Math.min(start + pageSize, filtered.length)} sur {filtered.length} entrées
-          </div>
-          <div className="sr-pager">
-            <button onClick={() => goto(currentPage - 1)} disabled={currentPage === 1}>
-              Précédente
-            </button>
-            {Array.from({ length: Math.min(totalPages, 7) }).map((_, i) => {
-              const p = i + 1;
-              return (
-                <button
-                  key={p}
-                  onClick={() => goto(p)}
-                  className={p === currentPage ? "is-active" : ""}
-                >
-                  {p}
-                </button>
-              );
-            })}
-            {totalPages > 7 && <span className="sr-dots">…</span>}
-            {totalPages > 7 && (
-              <button
-                onClick={() => goto(totalPages)}
-                className={currentPage === totalPages ? "is-active" : ""}
-              >
-                {totalPages}
-              </button>
-            )}
-            <button
-              onClick={() => goto(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              Suivante
-            </button>
           </div>
         </div>
       )}
@@ -345,66 +303,33 @@ function AdminRow({ row, onSave, onDelete, saving }) {
   const [city, setCity] = useState(row.city);
   const [price, setPrice] = useState(row.price);
 
-  useEffect(() => {
-    setCity(row.city);
-    setPrice(row.price);
-  }, [row.id, row.city, row.price]);
+  useEffect(() => { setCity(row.city); setPrice(row.price); }, [row.id, row.city, row.price]);
 
-  const commit = () => {
-    onSave({ city: city.trim(), price: Number(price) });
-    setEdit(false);
-  };
-  const cancel = () => {
-    setCity(row.city);
-    setPrice(row.price);
-    setEdit(false);
-  };
+  const commit = () => { onSave({ city: city.trim(), price: Number(price) }); setEdit(false); };
+  const cancel = () => { setCity(row.city); setPrice(row.price); setEdit(false); };
 
   return (
     <tr>
       <td>
         {edit ? (
-          <input
-            className="sr-input"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="Ville"
-          />
-        ) : (
-          row.city
-        )}
+          <input className="sr-input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ville" />
+        ) : row.city}
       </td>
       <td style={{ width: 180 }}>
         {edit ? (
-          <input
-            className="sr-input"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            inputMode="numeric"
-            placeholder="Tarif"
-          />
-        ) : (
-          Number(row.price).toFixed(0)
-        )}
+          <input className="sr-input" value={price} onChange={(e) => setPrice(e.target.value)} inputMode="numeric" placeholder="Tarif" />
+        ) : Number(row.price).toFixed(0)}
       </td>
       <td style={{ width: 220 }}>
         {edit ? (
           <>
-            <button className="sr-btn sr-btn-primary" onClick={commit} disabled={saving}>
-              {saving ? "…" : "Enregistrer"}
-            </button>
-            <button className="sr-btn" onClick={cancel} disabled={saving}>
-              Annuler
-            </button>
+            <button className="sr-btn sr-btn-primary" onClick={commit} disabled={saving}>{saving ? "…" : "Enregistrer"}</button>
+            <button className="sr-btn" onClick={cancel} disabled={saving}>Annuler</button>
           </>
         ) : (
           <>
-            <button className="sr-btn" onClick={() => setEdit(true)}>
-              Modifier
-            </button>
-            <button className="sr-btn sr-btn-danger" onClick={onDelete} disabled={saving}>
-              Supprimer
-            </button>
+            <button className="sr-btn" onClick={() => setEdit(true)}>Modifier</button>
+            <button className="sr-btn sr-btn-danger" onClick={onDelete} disabled={saving}>Supprimer</button>
           </>
         )}
       </td>

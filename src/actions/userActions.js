@@ -1,69 +1,24 @@
 // src/actions/userActions.js
-import api from "../api";
+import api, { storageKeys, saveToken, clearTokens } from "../api";
 import {
-  USER_LOGIN_REQUEST,
-  USER_LOGIN_SUCCESS,
-  USER_LOGIN_FAIL,
-  USER_LOGOUT,
-
+  USER_LOGIN_REQUEST, USER_LOGIN_SUCCESS, USER_LOGIN_FAIL, USER_LOGOUT,
   CARD_CREATE_RESET,
-
-  USER_REGISTER_REQUEST,
-  USER_REGISTER_SUCCESS,
-  USER_REGISTER_FAIL,
-
-  USER_DETAILS_REQUEST,
-  USER_DETAILS_SUCCESS,
-  USER_DETAILS_FAIL,
-
-  UPDATE_USER_DETAILS_REQUEST,
-  UPDATE_USER_DETAILS_SUCCESS,
-  UPDATE_USER_DETAILS_FAIL,
-
-  DELETE_USER_ACCOUNT_REQUEST,
-  DELETE_USER_ACCOUNT_SUCCESS,
-  DELETE_USER_ACCOUNT_FAIL,
-
-  GET_USER_ALL_ADDRESSES_REQUEST,
-  GET_USER_ALL_ADDRESSES_SUCCESS,
-  GET_USER_ALL_ADDRESSES_FAIL,
-
-  GET_SINGLE_ADDRESS_REQUEST,
-  GET_SINGLE_ADDRESS_SUCCESS,
-  GET_SINGLE_ADDRESS_FAIL,
-
-  CREATE_USER_ADDRESS_REQUEST,
-  CREATE_USER_ADDRESS_SUCCESS,
-  CREATE_USER_ADDRESS_FAIL,
-
-  UPDATE_USER_ADDRESS_REQUEST,
-  UPDATE_USER_ADDRESS_SUCCESS,
-  UPDATE_USER_ADDRESS_FAIL,
-
-  DELETE_USER_ADDRESS_REQUEST,
-  DELETE_USER_ADDRESS_SUCCESS,
-  DELETE_USER_ADDRESS_FAIL,
-
-  CHECK_TOKEN_VALID_REQUEST,
-  CHECK_TOKEN_VALID_SUCCESS,
-  CHECK_TOKEN_VALID_FAIL,
-
-  GET_ALL_ORDERS_REQUEST,
-  GET_ALL_ORDERS_SUCCESS,
-  GET_ALL_ORDERS_FAIL,
-
-  PASSWORD_RESET_REQUEST,
-  PASSWORD_RESET_SUCCESS,
-  PASSWORD_RESET_FAIL,
-  PASSWORD_RESET_CONFIRM_REQUEST,
-  PASSWORD_RESET_CONFIRM_SUCCESS,
-  PASSWORD_RESET_CONFIRM_FAIL,
+  USER_REGISTER_REQUEST, USER_REGISTER_SUCCESS, USER_REGISTER_FAIL,
+  USER_DETAILS_REQUEST, USER_DETAILS_SUCCESS, USER_DETAILS_FAIL,
+  UPDATE_USER_DETAILS_REQUEST, UPDATE_USER_DETAILS_SUCCESS, UPDATE_USER_DETAILS_FAIL,
+  DELETE_USER_ACCOUNT_REQUEST, DELETE_USER_ACCOUNT_SUCCESS, DELETE_USER_ACCOUNT_FAIL,
+  GET_USER_ALL_ADDRESSES_REQUEST, GET_USER_ALL_ADDRESSES_SUCCESS, GET_USER_ALL_ADDRESSES_FAIL,
+  GET_SINGLE_ADDRESS_REQUEST, GET_SINGLE_ADDRESS_SUCCESS, GET_SINGLE_ADDRESS_FAIL,
+  CREATE_USER_ADDRESS_REQUEST, CREATE_USER_ADDRESS_SUCCESS, CREATE_USER_ADDRESS_FAIL,
+  UPDATE_USER_ADDRESS_REQUEST, UPDATE_USER_ADDRESS_SUCCESS, UPDATE_USER_ADDRESS_FAIL,
+  DELETE_USER_ADDRESS_REQUEST, DELETE_USER_ADDRESS_SUCCESS, DELETE_USER_ADDRESS_FAIL,
+  CHECK_TOKEN_VALID_REQUEST, CHECK_TOKEN_VALID_SUCCESS, CHECK_TOKEN_VALID_FAIL,
+  GET_ALL_ORDERS_REQUEST, GET_ALL_ORDERS_SUCCESS, GET_ALL_ORDERS_FAIL,
+  PASSWORD_RESET_REQUEST, PASSWORD_RESET_SUCCESS, PASSWORD_RESET_FAIL,
+  PASSWORD_RESET_CONFIRM_REQUEST, PASSWORD_RESET_CONFIRM_SUCCESS, PASSWORD_RESET_CONFIRM_FAIL,
 } from "../constants";
 
-// ----------------------- helpers -----------------------
-const ACCESS_KEY = "access";
-const REFRESH_KEY = "refresh";
-
+/* -------- helpers -------- */
 const normalizeUser = (raw) => {
   const token   = raw?.access || raw?.token || "";
   const refresh = raw?.refresh || "";
@@ -75,8 +30,10 @@ const normalizeUser = (raw) => {
 };
 
 const authHeader = (getState) => {
-  const token = getState()?.userLoginReducer?.userInfo?.access
-             || getState()?.userLoginReducer?.userInfo?.token;
+  const token =
+    getState()?.userLoginReducer?.userInfo?.access ||
+    getState()?.userLoginReducer?.userInfo?.token;
+
   return {
     headers: {
       "Content-Type": "application/json",
@@ -87,40 +44,41 @@ const authHeader = (getState) => {
 
 const remember = (user) => {
   try {
-    if (user?.access) localStorage.setItem(ACCESS_KEY, user.access);
-    if (user?.refresh) localStorage.setItem(REFRESH_KEY, user.refresh);
-    localStorage.setItem("userInfo", JSON.stringify(user));
+    // env-scoped + legacy keys
+    saveToken(user?.access, user?.refresh);
+    const { user: userKey } = storageKeys();
+    localStorage.setItem(userKey, JSON.stringify(user));
+    localStorage.setItem("userInfo", JSON.stringify(user)); // legacy key
   } catch {}
 };
 
-// ----------------------- AUTH -----------------------
+/* -------- AUTH -------- */
 export const login = (email, password) => async (dispatch) => {
   dispatch({ type: USER_LOGIN_REQUEST });
 
-  // Try both unprefixed and prefixed account endpoints, then both SimpleJWT endpoints
+  // Try multiple possible endpoints (works on both local and prod setups)
   const attempts = [
-    { url: "/account/login/",       body: { username: email, password } },
-    { url: "/api/account/login/",   body: { username: email, password } },
-    { url: "/api/token/",           body: { username: email, password } },
-    { url: "/token/",               body: { username: email, password } },
+    { url: "/account/login/",     body: { username: email, password } },
+    { url: "/api/account/login/", body: { username: email, password } },
+    { url: "/api/token/",         body: { username: email, password } },
+    { url: "/token/",             body: { username: email, password } },
   ];
 
   try {
     let data = null, lastErr = null;
-
     for (const a of attempts) {
       try {
-        const res = await api.post(a.url, a.body, { headers: { "Content-Type": "application/json" }});
+        const res = await api.post(a.url, a.body, {
+          headers: { "Content-Type": "application/json" },
+        });
         data = res.data;
         break;
       } catch (e) {
         lastErr = e;
         const code = e?.response?.status;
-        // only keep looping on 404/405 (missing route); anything else we bubble up
-        if (code && code !== 404 && code !== 405) throw e;
+        if (code && code !== 404 && code !== 405) throw e; // bubble up real errors
       }
     }
-
     if (!data) throw lastErr || new Error("Login failed");
 
     const user = normalizeUser(data);
@@ -162,15 +120,16 @@ export const googleLogin = (googleAccessToken) => async (dispatch) => {
 
 export const logout = () => (dispatch) => {
   try {
-    localStorage.removeItem(ACCESS_KEY);
-    localStorage.removeItem(REFRESH_KEY);
-    localStorage.removeItem("userInfo");
+    clearTokens();
+    const { user } = storageKeys();
+    localStorage.removeItem(user);
+    localStorage.removeItem("userInfo"); // legacy
   } catch {}
   dispatch({ type: USER_LOGOUT });
   dispatch({ type: CARD_CREATE_RESET });
 };
 
-// ----------------------- Registration -----------------------
+/* -------- Registration -------- */
 export const register = (username, email, password) => async (dispatch) => {
   try {
     dispatch({ type: USER_REGISTER_REQUEST });
@@ -191,11 +150,10 @@ export const register = (username, email, password) => async (dispatch) => {
   }
 };
 
-// ----------------------- Token check -----------------------
+/* -------- Token check (auth ping) -------- */
 export const checkTokenValidation = () => async (dispatch, getState) => {
   try {
     dispatch({ type: CHECK_TOKEN_VALID_REQUEST });
-    // health endpoint (public) — works whether you’re on / or /api/ reverse proxy
     await api.get("/payments/health/", authHeader(getState));
     dispatch({ type: CHECK_TOKEN_VALID_SUCCESS });
   } catch (error) {
@@ -210,7 +168,7 @@ export const checkTokenValidation = () => async (dispatch, getState) => {
   }
 };
 
-// ----------------------- USER -----------------------
+/* -------- USER -------- */
 export const userDetails = (id) => async (dispatch, getState) => {
   try {
     dispatch({ type: USER_DETAILS_REQUEST });
@@ -268,7 +226,7 @@ export const userAccountDelete = (userData) => async (dispatch, getState) => {
   }
 };
 
-// ----------------------- Addresses -----------------------
+/* -------- Addresses -------- */
 export const getAllAddress = () => async (dispatch, getState) => {
   try {
     dispatch({ type: GET_USER_ALL_ADDRESSES_REQUEST });
@@ -360,7 +318,7 @@ export const deleteUserAddress = (id) => async (dispatch, getState) => {
   }
 };
 
-// ----------------------- Orders -----------------------
+/* -------- Orders -------- */
 export const getAllOrders = () => async (dispatch, getState) => {
   try {
     dispatch({ type: GET_ALL_ORDERS_REQUEST });
@@ -377,7 +335,7 @@ export const getAllOrders = () => async (dispatch, getState) => {
   }
 };
 
-// ----------------------- Password reset -----------------------
+/* -------- Password reset -------- */
 export const requestPasswordReset = (email) => async (dispatch) => {
   try {
     dispatch({ type: PASSWORD_RESET_REQUEST });

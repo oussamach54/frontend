@@ -6,7 +6,6 @@ import { getProductDetails, updateProduct } from '../actions/productActions';
 import { checkTokenValidation, logout } from '../actions/userActions';
 import { UPDATE_PRODUCT_RESET } from '../constants';
 import Message from '../components/Message';
-import { imgUrl } from '../utils/media';
 
 export default function ProductUpdatePage({ match }) {
   const productId = match.params.id;
@@ -18,15 +17,18 @@ export default function ProductUpdatePage({ match }) {
   const [brand, setBrand] = useState('');
   const [category, setCategory] = useState('other');
 
+  // base + promo
   const [price, setPrice] = useState('');
   const [newPrice, setNewPrice] = useState('');
   const [discountPct, setDiscountPct] = useState('');
 
   const [stock, setStock] = useState(false);
 
+  // Image
   const [newImage, setNewImage] = useState(false);
   const [image, setImage] = useState(null);
 
+  // Variants
   const [variants, setVariants] = useState([]);
   const addVariantRow = () =>
     setVariants(v => [...v, { label: '', size_ml: '', price: '', in_stock: true, sku: '' }]);
@@ -34,6 +36,7 @@ export default function ProductUpdatePage({ match }) {
   const changeVariant = (idx, field, value) =>
     setVariants(v => v.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
 
+  // reducers
   const { userInfo } = useSelector(s => s.userLoginReducer || {});
   const { product, loading: loadingDetails } = useSelector(s => s.productDetailsReducer || {});
   const { success, loading: loadingUpdate, error } = useSelector(s => s.updateProductReducer || {});
@@ -65,7 +68,11 @@ export default function ProductUpdatePage({ match }) {
     );
   }, [product]);
 
-  const norm = (x) => x == null ? "" : String(x).replace(",", ".");
+  // normalize commas to dots
+  const norm = (x) =>
+    x === null || x === undefined ? "" : String(x).replace(",", ".");
+
+  // % helper
   const applyPercent = () => {
     const base = parseFloat(norm(price));
     const pct = parseFloat(norm(discountPct));
@@ -79,8 +86,8 @@ export default function ProductUpdatePage({ match }) {
 
     fd.append('name', name);
     fd.append('description', description);
-    fd.append('price', norm(price));
-    fd.append('new_price', newPrice === '' ? '' : norm(newPrice));
+    fd.append('price', norm(price));                 // ← dot decimal
+    fd.append('new_price', newPrice === '' ? '' : norm(newPrice)); // '' clears promo
     fd.append('stock', stock);
     fd.append('brand', brand);
     fd.append('category', category);
@@ -113,8 +120,6 @@ export default function ProductUpdatePage({ match }) {
     window.location.reload();
   }
 
-  const preview = imgUrl(product?.image_url || product?.image);
-
   return (
     <div>
       <span className="d-flex justify-content-center text-info"><em>Edit Product</em></span>
@@ -136,9 +141,10 @@ export default function ProductUpdatePage({ match }) {
 
       {product && (
         <Form onSubmit={onSubmit}>
+          {/* Image */}
           <Form.Group controlId="image">
             <Form.Label><b>Product Image</b></Form.Label>
-            <p>{preview && <img src={preview} alt={product.name} height="200" />}</p>
+            <p>{product.image && <img src={product.image} alt={product.name} height="200" />}</p>
             {newImage ? (
               <>
                 <Form.Control type="file" onChange={(e) => setImage(e.target.files[0])} />
@@ -176,11 +182,13 @@ export default function ProductUpdatePage({ match }) {
             </Form.Control>
           </Form.Group>
 
+          {/* Base price */}
           <Form.Group controlId="price">
             <Form.Label><b>Base price</b></Form.Label>
             <Form.Control type="text" value={price} placeholder="ex. 199,00" onChange={(e) => setPrice(e.target.value)} />
           </Form.Group>
 
+          {/* % helper */}
           <Form.Group controlId="discountPct">
             <Form.Label><b>Discount % (helper)</b></Form.Label>
             <InputGroup>
@@ -192,6 +200,7 @@ export default function ProductUpdatePage({ match }) {
             <small className="text-muted">Calculé à partir du <b>Base price</b>.</small>
           </Form.Group>
 
+          {/* New price */}
           <Form.Group controlId="new_price">
             <Form.Label><b>New price (promotion)</b></Form.Label>
             <Form.Control type="text" value={newPrice} placeholder="ex. 155,00 (vide = pas de promo)" onChange={(e) => setNewPrice(e.target.value)} />
@@ -202,6 +211,7 @@ export default function ProductUpdatePage({ match }) {
             <Form.Check className="ml-2" type="checkbox" checked={stock} onChange={() => setStock(!stock)} />
           </div>
 
+          {/* Variants */}
           <Form.Group>
             <Form.Label><b>Sizes / Variants</b></Form.Label>
             {variants.map((row, i) => (
