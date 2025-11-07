@@ -60,7 +60,7 @@ export default function HomePage() {
     setProducts([]);
     (async () => {
       try {
-        const { data } = await api.get(`/products/?type=${encodeURIComponent(tab)}`);
+        const { data } = await api.get('/products/', { params: { type: tab } });
         if (!alive) return;
         setProducts(Array.isArray(data) ? data : []);
       } catch (e) {
