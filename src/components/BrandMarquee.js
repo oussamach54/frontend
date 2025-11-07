@@ -1,59 +1,34 @@
-import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
-import "./brand-marquee.css";
-
-const LOGOS = {
-  "beauty of joseon": "/brands/boj.svg",
-  "axis-y": "/brands/axisy.svg",
-  "cosrx": "/brands/cosrx.svg",
-  "skin1004": "/brands/skin1004.svg",
-  "dr. althea": "/brands/dralthea.svg",
-  "i'm from": "/brands/imfrom.svg",
-  anua: "/brands/anua.svg",
-};
+import React, { useEffect, useState } from "react";
+import api from "../api";
 
 export default function BrandMarquee() {
   const [brands, setBrands] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    let alive = true;
+    let ok = true;
     (async () => {
       try {
-        const { data } = await axios.get("/api/brands/");
-        if (alive) setBrands((Array.isArray(data) ? data : []).filter(Boolean));
-      } finally {
-        if (alive) setLoading(false);
+        const { data } = await api.get("/brands/"); // public → NO auth
+        if (ok) setBrands(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (ok) setError(e?.response?.data?.detail || e.message);
       }
     })();
-    return () => { alive = false; };
+    return () => { ok = false; };
   }, []);
 
-  const display = useMemo(
-    () => (brands.length ? [...brands, ...brands] : []),
-    [brands]
-  );
-
-  if (loading || !display.length) return null;
+  if (error) return null;
+  if (!brands.length) return null;
 
   return (
-    <section className="bm-wrap">
-      <h2 className="bm-title">Toutes nos marques</h2>
-
-      <div className="bm-rail">
-        <div className="bm-track">
-          {display.map((raw, i) => {
-            const label = String(raw || "").trim();
-            const key = label.toLowerCase();
-            const src = LOGOS[key];
-            return (
-              <div className="bm-card" key={`${key}-${i}`}>
-                {src ? <img src={src} alt={label} /> : <span className="bm-text">{label}</span>}
-              </div>
-            );
-          })}
-        </div>
+    <div className="brandbar">
+      <div className="brandbar-inner container">
+        {brands.map((b) => (
+          <span className="brand-pill" key={b}>{b}</span>
+        ))}
       </div>
-    </section>
+    </div>
   );
 }
+
