@@ -139,7 +139,7 @@ export default function ContactPage() {
             </div>
             <div className="cc-info">
               <div className="cc-label">TikTok</div>
-              <div className="cc-value">@miniglowby_shy</div>
+              <div className="cc-value">@miniglowby_shay</div>
             </div>
             <div className="cc-actions">
               <a
