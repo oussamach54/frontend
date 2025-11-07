@@ -1,0 +1,61 @@
+/* Container */
+.bm-wrap {
+  padding: 28px 0;
+  background: linear-gradient(180deg, #fff, #fff0);
+  border-top: 1px solid rgba(0, 0, 0, .05);
+  border-bottom: 1px solid rgba(0, 0, 0, .05);
+}
+
+/* Clipping mask so we don't see edges while animating */
+.bm-mask {
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Scrolling track */
+.bm-track {
+  display: flex;
+  gap: 28px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  /* The magic: continuous scroll */
+  animation: bm-scroll 30s linear infinite;
+}
+
+/* Pause on hover (desktop) */
+.bm-mask:hover .bm-track {
+  animation-play-state: paused;
+}
+
+/* Brand pill */
+.bm-chip {
+  white-space: nowrap;
+  font-weight: 600;
+  letter-spacing: .4px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: #f7f7f7;
+  border: 1px solid rgba(0,0,0,.06);
+  color: #333;
+  box-shadow: 0 1px 0 rgba(0,0,0,.03);
+  user-select: none;
+}
+
+/* Keyframes – translate the whole row to the left */
+@keyframes bm-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); } /* because we duplicated content */
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .bm-track { animation: none; }
+}
+
+/* Small screens – tighter spacing */
+@media (max-width: 640px) {
+  .bm-track { gap: 16px; }
+  .bm-chip { padding: 8px 12px; font-weight: 600; }
+}
