@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -10,11 +11,11 @@ export default function HomeProductCard({ product }) {
   const dispatch = useDispatch();
   const cart = useCart();
 
-  // promo applies ONLY to the biggest variant (backend tells us which one)
+  const img = product.image_url || product.image || "";
+
+  // promo only on biggest variant
   const promoVariantId = product.promo_variant_id;
   const hasDiscount = !!product?.has_discount && !!promoVariantId;
-
-  // find the promo variant in the list (for title/UX)
   const promoVariant = (product.variants || []).find(v => String(v.id) === String(promoVariantId));
 
   const oldDisplay = hasDiscount
@@ -33,7 +34,7 @@ export default function HomeProductCard({ product }) {
         id,
         name: product.name + (promoVariant ? ` (${promoVariant.label})` : ""),
         price: newDisplay,
-        image: product.image_url || product.image,   // 👈 absolute URL when present
+        image: img,
         variantId: promoVariant ? promoVariant.id : null,
         variantLabel: promoVariant ? promoVariant.label : "",
       },
@@ -48,7 +49,7 @@ export default function HomeProductCard({ product }) {
       {hasDiscount && <span className="hp-badge hp-badge--sale">-{percent}%</span>}
 
       <Link to={`/product/${id}/`} className="hp-media" aria-label={product.name}>
-        <img src={product.image_url || product.image} alt={product.name} /> {/* 👈 */}
+        <img src={img} alt={product.name} />
       </Link>
 
       <div className="hp-actions-row">
@@ -77,4 +78,3 @@ export default function HomeProductCard({ product }) {
     </article>
   );
 }
-
