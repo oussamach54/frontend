@@ -33,7 +33,7 @@ export default function HomeProductCard({ product }) {
         id,
         name: product.name + (promoVariant ? ` (${promoVariant.label})` : ""),
         price: newDisplay,
-        image: product.image,
+        image: product.image_url || product.image,   // 👈 absolute URL when present
         variantId: promoVariant ? promoVariant.id : null,
         variantLabel: promoVariant ? promoVariant.label : "",
       },
@@ -48,7 +48,7 @@ export default function HomeProductCard({ product }) {
       {hasDiscount && <span className="hp-badge hp-badge--sale">-{percent}%</span>}
 
       <Link to={`/product/${id}/`} className="hp-media" aria-label={product.name}>
-        <img src={product.image} alt={product.name} />
+        <img src={product.image_url || product.image} alt={product.name} /> {/* 👈 */}
       </Link>
 
       <div className="hp-actions-row">
@@ -77,3 +77,4 @@ export default function HomeProductCard({ product }) {
     </article>
   );
 }
+
