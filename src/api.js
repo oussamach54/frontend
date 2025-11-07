@@ -1,56 +1,55 @@
 // src/api.js
 import axios from "axios";
 
-/**
- * Choose the correct API base URL depending on where the app runs.
- *  - In production → use https://api.miniglowbyshay.cloud
- *  - In local dev → use http://localhost:8000
- *  - Or override with REACT_APP_API_URL
- */
+/** Decide backend base URL */
 function chooseBaseURL() {
-  // 1️⃣ Check environment variable first (preferred)
-  const env = process.env.REACT_APP_API_URL?.trim();
-  if (env) return env; // Example: "https://api.miniglowbyshay.cloud"
+  const env = (process.env.REACT_APP_API_URL || "").trim();
+  if (env) return env; // e.g. "https://api.miniglowbyshay.cloud"
 
-  // 2️⃣ Auto-detect based on hostname
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
-    // On your production frontend domain
     if (host.endsWith("miniglowbyshay.cloud") && !host.startsWith("api.")) {
       return "https://api.miniglowbyshay.cloud";
     }
   }
-
-  // 3️⃣ Default to local backend
   return "http://localhost:8000";
 }
 
-// Create the Axios instance
+/* 🔧 Make sure no global axios default leaks into requests */
+delete axios.defaults?.headers?.common?.Authorization;
+
 const api = axios.create({
-  baseURL: `${chooseBaseURL()}/api`, // All calls go to /api/... endpoints
+  baseURL: `${chooseBaseURL()}/api`,
   timeout: 20000,
 });
 
-// 🔐 Attach JWT access token automatically if present
+/**
+ * We ONLY send Authorization if the caller asks for it with `_authRequired: true`.
+ * Also, if there is any Authorization header attached accidentally, we strip it.
+ */
 api.interceptors.request.use((config) => {
-  try {
+  // defensive: never let a stray Authorization leak onto public requests
+  if (!config._authRequired && config.headers?.Authorization) {
+    delete config.headers.Authorization;
+  }
+
+  if (config._authRequired) {
     const token =
       localStorage.getItem("access") || localStorage.getItem("token");
-    if (token) {
+    if (token && token !== "undefined" && token !== "null") {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
-  } catch (err) {
-    console.warn("JWT token read error:", err);
+    delete config._authRequired; // don’t send our custom flag
   }
   return config;
 });
 
-// Optional: Log API errors for debugging
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error("API error:", error?.response || error.message);
-    return Promise.reject(error);
+  (r) => r,
+  (err) => {
+    console.error("API error:", err?.response || err?.message);
+    return Promise.reject(err);
   }
 );
 
