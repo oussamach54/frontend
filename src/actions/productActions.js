@@ -6,87 +6,90 @@ import {
   DELETE_PRODUCT_REQUEST, DELETE_PRODUCT_SUCCESS, DELETE_PRODUCT_FAIL,
   UPDATE_PRODUCT_REQUEST, UPDATE_PRODUCT_SUCCESS, UPDATE_PRODUCT_FAIL,
   CHANGE_DELIVERY_STATUS_REQUEST, CHANGE_DELIVERY_STATUS_SUCCESS, CHANGE_DELIVERY_STATUS_FAIL,
-} from '../constants';
+} from "../constants";
+import api from "../api";
 
-import api from '../api';
-
-// -------- PUBLIC: products list
+/* ---- PUBLIC ---- */
 export const getProductsList = () => async (dispatch) => {
   try {
     dispatch({ type: PRODUCTS_LIST_REQUEST });
-    const { data } = await api.get('/products/'); // NO auth
+    const { data } = await api.get("/products/");
     dispatch({ type: PRODUCTS_LIST_SUCCESS, payload: data });
   } catch (error) {
-    dispatch({ type: PRODUCTS_LIST_FAIL, payload: error.message });
+    dispatch({
+      type: PRODUCTS_LIST_FAIL,
+      payload: error?.response?.data?.detail || error.message,
+    });
   }
 };
 
-// -------- PUBLIC: product details
 export const getProductDetails = (id) => async (dispatch) => {
   try {
     dispatch({ type: PRODUCT_DETAILS_REQUEST });
-    const { data } = await api.get(`/product/${id}/`); // NO auth
+    const { data } = await api.get(`/product/${id}/`);
     dispatch({ type: PRODUCT_DETAILS_SUCCESS, payload: data });
   } catch (error) {
-    dispatch({ type: PRODUCT_DETAILS_FAIL, payload: error.message });
+    dispatch({
+      type: PRODUCT_DETAILS_FAIL,
+      payload: error?.response?.data?.detail || error.message,
+    });
   }
 };
 
-// -------- AUTH: create product
-export const createProduct = (product) => async (dispatch) => {
+/* ---- AUTH ---- */
+export const createProduct = (formData) => async (dispatch) => {
   try {
     dispatch({ type: CREATE_PRODUCT_REQUEST });
-    const { data } = await api.post('/product-create/', product, {
-      _authRequired: true, // <-- ONLY here we send JWT
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // Let the browser set multipart boundary automatically
+    const { data } = await api.post("/product-create/", formData);
     dispatch({ type: CREATE_PRODUCT_SUCCESS, payload: data });
   } catch (error) {
-    const detail = error.response?.data?.detail || error.message;
-    dispatch({ type: CREATE_PRODUCT_FAIL, payload: detail });
+    dispatch({
+      type: CREATE_PRODUCT_FAIL,
+      payload: error?.response?.data?.detail || error.message,
+    });
   }
 };
 
-// -------- AUTH: delete product
+export const updateProduct = (id, formData) => async (dispatch) => {
+  try {
+    dispatch({ type: UPDATE_PRODUCT_REQUEST });
+    const { data } = await api.put(`/product-update/${id}/`, formData);
+    dispatch({ type: UPDATE_PRODUCT_SUCCESS, payload: data });
+  } catch (error) {
+    dispatch({
+      type: UPDATE_PRODUCT_FAIL,
+      payload: error?.response?.data?.detail || error.message,
+    });
+  }
+};
+
 export const deleteProduct = (id) => async (dispatch) => {
   try {
     dispatch({ type: DELETE_PRODUCT_REQUEST });
-    const { data } = await api.delete(`/product-delete/${id}/`, {
-      _authRequired: true,
-    });
+    const { data } = await api.delete(`/product-delete/${id}/`);
     dispatch({ type: DELETE_PRODUCT_SUCCESS, payload: data });
   } catch (error) {
-    const detail = error.response?.data?.detail || error.message;
-    dispatch({ type: DELETE_PRODUCT_FAIL, payload: detail });
-  }
-};
-
-// -------- AUTH: update product
-export const updateProduct = (id, product) => async (dispatch) => {
-  try {
-    dispatch({ type: UPDATE_PRODUCT_REQUEST });
-    const { data } = await api.put(`/product-update/${id}/`, product, {
-      _authRequired: true,
-      headers: { 'Content-Type': 'multipart/form-data' },
+    dispatch({
+      type: DELETE_PRODUCT_FAIL,
+      payload: error?.response?.data?.detail || error.message,
     });
-    dispatch({ type: UPDATE_PRODUCT_SUCCESS, payload: data });
-  } catch (error) {
-    const detail = error.response?.data?.detail || error.message;
-    dispatch({ type: UPDATE_PRODUCT_FAIL, payload: detail });
   }
 };
 
-// -------- AUTH: change delivery status
 export const changeDeliveryStatus = (id, payload) => async (dispatch) => {
   try {
     dispatch({ type: CHANGE_DELIVERY_STATUS_REQUEST });
-    const { data } = await api.put(`/account/change-order-status/${id}/`, payload, {
-      _authRequired: true,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    const { data } = await api.put(
+      `/account/change-order-status/${id}/`,
+      payload,
+      { headers: { "Content-Type": "application/json" } }
+    );
     dispatch({ type: CHANGE_DELIVERY_STATUS_SUCCESS, payload: data });
   } catch (error) {
-    const detail = error.response?.data?.detail || error.message;
-    dispatch({ type: CHANGE_DELIVERY_STATUS_FAIL, payload: detail });
+    dispatch({
+      type: CHANGE_DELIVERY_STATUS_FAIL,
+      payload: error?.response?.data?.detail || error.message,
+    });
   }
 };
