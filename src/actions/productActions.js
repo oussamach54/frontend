@@ -1,5 +1,4 @@
-// COMPLETE FILE
-import api from "../api";
+// src/actions/productActions.js
 import {
   PRODUCTS_LIST_REQUEST,
   PRODUCTS_LIST_SUCCESS,
@@ -26,154 +25,146 @@ import {
   CHANGE_DELIVERY_STATUS_FAIL,
 } from "../constants/index";
 
-/* Small helper to always pick the right token key */
-const pickToken = (getState) => {
-  const { userLoginReducer: { userInfo } = {} } = getState();
-  return userInfo?.access || userInfo?.token || "";
+import api from "../api"; // << use the shared axios instance
+
+// Small helper to build auth header safely
+const authConfig = (getState, contentType) => {
+  const {
+    userLoginReducer: { userInfo },
+  } = getState();
+
+  const token =
+    userInfo?.access || // SimpleJWT "access"
+    userInfo?.token  || // older code
+    localStorage.getItem("access") ||
+    localStorage.getItem("token");
+
+  const headers = {};
+  if (contentType) headers["Content-Type"] = contentType;
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return { headers };
 };
 
-/* ---------------------------------------
-   LIST + DETAILS
-----------------------------------------*/
-export const getProductsList = () => async (dispatch) => {
+// ============ LIST ============
+export const getProductsList = (params = {}) => async (dispatch) => {
   try {
     dispatch({ type: PRODUCTS_LIST_REQUEST });
-    const { data } = await api.get("/api/products/");
+
+    // NOTE: no /api prefix here
+    const { data } = await api.get("/products/", { params });
+
     dispatch({ type: PRODUCTS_LIST_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
       type: PRODUCTS_LIST_FAIL,
-      payload: error?.response?.data?.detail || error.message,
+      payload:
+        error?.response?.data?.detail ||
+        error?.response?.statusText ||
+        error.message,
     });
   }
 };
 
+// ============ DETAILS ============
 export const getProductDetails = (id) => async (dispatch) => {
   try {
     dispatch({ type: PRODUCT_DETAILS_REQUEST });
-    const { data } = await api.get(`/api/product/${id}/`);
+
+    const { data } = await api.get(`/product/${id}/`);
+
     dispatch({ type: PRODUCT_DETAILS_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
       type: PRODUCT_DETAILS_FAIL,
-      payload: error?.response?.data?.detail || error.message,
+      payload:
+        error?.response?.data?.detail ||
+        error?.response?.statusText ||
+        error.message,
     });
   }
 };
 
-/* ---------------------------------------
-   CREATE
-   - Primary endpoint: /api/products/create/  (new)
-   - Fallback to:      /api/product-create/    (old)
-----------------------------------------*/
-export const createProduct = (formData) => async (dispatch, getState) => {
+// ============ CREATE (admin) ============
+export const createProduct = (productFormData) => async (dispatch, getState) => {
   try {
     dispatch({ type: CREATE_PRODUCT_REQUEST });
 
-    const token = pickToken(getState);
-    const cfg = {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    };
+    const cfg = authConfig(getState, "multipart/form-data");
 
-    // Try the new canonical route first
-    try {
-      const { data } = await api.post("/api/products/create/", formData, cfg);
-      dispatch({ type: CREATE_PRODUCT_SUCCESS, payload: data });
-      return data;
-    } catch (e) {
-      // If 404 on new route, try the legacy route automatically
-      if (e?.response?.status === 404) {
-        const { data } = await api.post("/api/product-create/", formData, cfg);
-        dispatch({ type: CREATE_PRODUCT_SUCCESS, payload: data });
-        return data;
-      }
-      throw e;
-    }
+    const { data } = await api.post("/product-create/", productFormData, cfg);
+
+    dispatch({ type: CREATE_PRODUCT_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
       type: CREATE_PRODUCT_FAIL,
-      payload: error?.response?.data?.detail || error.message,
-    });
-    throw error;
-  }
-};
-
-/* ---------------------------------------
-   UPDATE
-----------------------------------------*/
-export const updateProduct = (id, formData) => async (dispatch, getState) => {
-  try {
-    dispatch({ type: UPDATE_PRODUCT_REQUEST });
-
-    const token = pickToken(getState);
-    const cfg = {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    };
-
-    const { data } = await api.put(`/api/product-update/${id}/`, formData, cfg);
-    dispatch({ type: UPDATE_PRODUCT_SUCCESS, payload: data });
-  } catch (error) {
-    dispatch({
-      type: UPDATE_PRODUCT_FAIL,
-      payload: error?.response?.data?.detail || error.message,
+      payload:
+        error?.response?.data?.detail ||
+        error?.response?.statusText ||
+        error.message,
     });
   }
 };
 
-/* ---------------------------------------
-   DELETE
-----------------------------------------*/
+// ============ DELETE (admin) ============
 export const deleteProduct = (id) => async (dispatch, getState) => {
   try {
     dispatch({ type: DELETE_PRODUCT_REQUEST });
 
-    const token = pickToken(getState);
-    const cfg = {
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    };
+    const cfg = authConfig(getState, "application/json");
 
-    const { data } = await api.delete(`/api/product-delete/${id}/`, cfg);
-    dispatch({ type: DELETE_PRODUCT_SUCCESS, payload: data });
+    await api.delete(`/product-delete/${id}/`, cfg);
+
+    dispatch({ type: DELETE_PRODUCT_SUCCESS });
   } catch (error) {
     dispatch({
       type: DELETE_PRODUCT_FAIL,
-      payload: error?.response?.data?.detail || error.message,
+      payload:
+        error?.response?.data?.detail ||
+        error?.response?.statusText ||
+        error.message,
     });
   }
 };
 
-/* ---------------------------------------
-   ORDER DELIVERY STATUS (ADMIN)
-   Backend route today:
-   /api/account/orders/<id>/status/
-----------------------------------------*/
+// ============ UPDATE (admin) ============
+export const updateProduct = (id, productFormData) => async (dispatch, getState) => {
+  try {
+    dispatch({ type: UPDATE_PRODUCT_REQUEST });
+
+    const cfg = authConfig(getState, "multipart/form-data");
+
+    const { data } = await api.put(`/product-update/${id}/`, productFormData, cfg);
+
+    dispatch({ type: UPDATE_PRODUCT_SUCCESS, payload: data });
+  } catch (error) {
+    dispatch({
+      type: UPDATE_PRODUCT_FAIL,
+      payload:
+        error?.response?.data?.detail ||
+        error?.response?.statusText ||
+        error.message,
+    });
+  }
+};
+
+// ============ CHANGE DELIVERY STATUS (admin) ============
 export const changeDeliveryStatus = (id, payload) => async (dispatch, getState) => {
   try {
     dispatch({ type: CHANGE_DELIVERY_STATUS_REQUEST });
 
-    const token = pickToken(getState);
-    const cfg = {
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    };
+    const cfg = authConfig(getState, "application/json");
 
-    const { data } = await api.put(`/api/account/orders/${id}/status/`, payload, cfg);
+    // Django: account/urls.py → "orders/<int:pk>/status/"
+    const { data } = await api.put(`/account/orders/${id}/status/`, payload, cfg);
+
     dispatch({ type: CHANGE_DELIVERY_STATUS_SUCCESS, payload: data });
   } catch (error) {
     dispatch({
       type: CHANGE_DELIVERY_STATUS_FAIL,
-      payload: error?.response?.data?.detail || error.message,
+      payload:
+        error?.response?.data?.detail ||
+        error?.response?.statusText ||
+        error.message,
     });
   }
 };
