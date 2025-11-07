@@ -1,30 +1,36 @@
-// src/pages/ForgotPasswordPage.jsx
 import React, { useState } from "react";
-import axios from "axios";
-import { Form, Button, Alert } from "react-bootstrap";
 import { Link } from "react-router-dom";
-import "./login-register.css"; // reuse your auth styles
+import { Form, Button, Alert } from "react-bootstrap";
+import api from "../api";                // ✅ utilise le client qui a déjà /api
+import "./login-register.css";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [ok, setOk] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
     setOk(false);
-    if (!email.trim()) {
-      setErr("Veuillez saisir votre adresse email.");
-      return;
-    }
     try {
       setLoading(true);
-      await axios.post("/account/password-reset/", { email });
+
+      // endpoint principal (fonctionne en local & prod via api baseURL)
+      await api.post("/account/password-reset/", { email }, {
+        headers: { "Content-Type": "application/json" },
+      });
+
       setOk(true);
     } catch (e) {
-      setErr(e?.response?.data?.detail || "Une erreur est survenue.");
+      // message clair si backend renvoie 405/404
+      const msg =
+        e?.response?.data?.detail ||
+        e?.response?.data?.message ||
+        (e?.response?.status === 405 ? "Méthode non autorisée (405)." : null) ||
+        "Une erreur est survenue.";
+      setErr(msg);
     } finally {
       setLoading(false);
     }
@@ -33,14 +39,14 @@ export default function ForgotPasswordPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        {/* LEFT side visuals (like your login) */}
         <div className="auth-side">
           <div className="auth-brand">
             <img src="/brand/logop.png" alt="MiniGlow" />
           </div>
           <h2 className="auth-headline">Mot de passe oublié</h2>
           <p className="auth-blurb">
-            Entrez votre email, nous vous enverrons un lien sécurisé pour le réinitialiser.
+            Entrez votre email. Nous vous enverrons un lien sécurisé pour
+            réinitialiser votre mot de passe.
           </p>
           <ul className="auth-bullets">
             <li>Processus sécurisé</li>
@@ -49,20 +55,23 @@ export default function ForgotPasswordPage() {
           </ul>
         </div>
 
-        {/* RIGHT: form */}
         <div className="auth-form">
           <h1 className="auth-title">Mot de passe oublié</h1>
           <p className="auth-sub">Entrez votre email pour recevoir le lien.</p>
 
-          {ok && <Alert variant="success">Si un compte existe, un email a été envoyé.</Alert>}
+          {ok && (
+            <Alert variant="success">
+              Si un compte existe pour cet email, un lien de réinitialisation a
+              été envoyé.
+            </Alert>
+          )}
           {err && <Alert variant="danger">{err}</Alert>}
 
           <Form onSubmit={submit} className="auth-form-inner">
-            <Form.Group controlId="email" className="mb-4">
+            <Form.Group controlId="email" className="mb-3">
               <Form.Label>Email</Form.Label>
               <Form.Control
                 type="email"
-                placeholder="ex. vous@domaine.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -70,7 +79,7 @@ export default function ForgotPasswordPage() {
             </Form.Group>
 
             <Button type="submit" variant="dark" className="auth-btn-primary" disabled={loading}>
-              {loading ? "Envoi..." : "Envoyer le lien"}
+              {loading ? "Envoi…" : "Envoyer le lien"}
             </Button>
 
             <div className="auth-switch mt-3">
