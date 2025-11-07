@@ -52,7 +52,7 @@ function ProductDetailsPage({ history, match }) {
     }
   }, [variants, hasDiscount, promoVariantId, variantId]);
 
-  // compute unit price: if selected is promo variant → use promo new price from backend; else its normal price
+  // compute unit price
   const unitPrice = (() => {
     if (activeVariant) {
       if (hasDiscount && String(activeVariant.id) === String(promoVariantId)) {
@@ -60,7 +60,6 @@ function ProductDetailsPage({ history, match }) {
       }
       return Number(activeVariant.price || 0);
     }
-    // no variants case: fallback to product price/new_price (not used if you always have variants)
     if (hasDiscount) {
       return Number(product?.new_price || product?.price || 0);
     }
@@ -84,7 +83,7 @@ function ProductDetailsPage({ history, match }) {
         id: pid,
         name: product?.name,
         price: unitPrice,
-        image: product?.image,
+        image: product?.image_url || product?.image,   // 👈 use absolute URL when available
         variantId: activeVariant ? activeVariant.id : null,
         variantLabel: activeVariant ? activeVariant.label : "",
       },
@@ -134,7 +133,7 @@ function ProductDetailsPage({ history, match }) {
             <Col lg={6}>
               <div className="pd-media">
                 <div className="pd-media-frame">
-                  <img src={product?.image} alt={product?.name} />
+                  <img src={product?.image_url || product?.image} alt={product?.name} /> {/* 👈 */}
                   {hasDiscount && String(variantId) === String(promoVariantId) && (
                     <span className="pd-sale-badge pd-sale-badge--media">-{percent}%</span>
                   )}
