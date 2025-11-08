@@ -5,13 +5,13 @@ import Message from "../components/Message";
 import { deleteProduct, getProductDetails } from "../actions/productActions";
 import { toggleWishlist } from "../actions/wishlistActions";
 import { useCart } from "../cart/CartProvider";
-import { resolveImageURL } from "../utils/media";
 import {
   CREATE_PRODUCT_RESET,
   DELETE_PRODUCT_RESET,
   UPDATE_PRODUCT_RESET,
   CARD_CREATE_RESET,
 } from "../constants";
+import { productImage } from "../utils/media";
 
 function ProductDetailsPage({ history, match }) {
   const dispatch = useDispatch();
@@ -21,9 +21,11 @@ function ProductDetailsPage({ history, match }) {
   const [qty, setQty] = useState(1);
   const [variantId, setVariantId] = useState(null);
 
-  const { loading, error, product } = useSelector((s) => s.productDetailsReducer || {});
-  const { userInfo } = useSelector((s) => s.userLoginReducer || {});
-  const { success: productDeletionSuccess } = useSelector((s) => s.deleteProductReducer || {});
+  const { loading, error, product } =
+    useSelector((s) => s.productDetailsReducer) || {};
+  const { userInfo } = useSelector((s) => s.userLoginReducer) || {};
+  const { success: productDeletionSuccess } =
+    useSelector((s) => s.deleteProductReducer) || {};
   const { items: wishlistItems = [] } = useSelector((s) => s.wishlist || {});
 
   const pid = product?.id;
@@ -35,17 +37,18 @@ function ProductDetailsPage({ history, match }) {
     () => (Array.isArray(product?.variants) ? product.variants : []),
     [product?.variants]
   );
+
   const activeVariant = useMemo(
     () => variants.find((v) => String(v.id) === String(variantId)) || null,
     [variants, variantId]
   );
 
-  // promo only on biggest variant (provided by backend)
+  // promo on biggest variant (backend)
   const promoVariantId = product?.promo_variant_id || null;
   const hasDiscount = !!product?.has_discount && !!promoVariantId;
   const percent = Number(product?.discount_percent || 0);
 
-  // prefer auto-selecting the promo variant when promo exists
+  // auto-select variant
   useEffect(() => {
     if (!variants.length) return;
     if (hasDiscount && promoVariantId && variantId == null) {
@@ -64,7 +67,10 @@ function ProductDetailsPage({ history, match }) {
   // compute unit price
   const unitPrice = (() => {
     if (activeVariant) {
-      if (hasDiscount && String(activeVariant.id) === String(promoVariantId)) {
+      if (
+        hasDiscount &&
+        String(activeVariant.id) === String(promoVariantId)
+      ) {
         return Number(product?.promo_variant_new_price || activeVariant.price);
       }
       return Number(activeVariant.price || 0);
@@ -78,9 +84,10 @@ function ProductDetailsPage({ history, match }) {
   const total = unitPrice * qty;
 
   const fmtMAD = (v) =>
-    new Intl.NumberFormat("fr-MA", { style: "currency", currency: "MAD" }).format(
-      Number(v || 0)
-    );
+    new Intl.NumberFormat("fr-MA", {
+      style: "currency",
+      currency: "MAD",
+    }).format(Number(v || 0));
 
   const plus = () => setQty((q) => Math.min(99, q + 1));
   const minus = () => setQty((q) => Math.max(1, q - 1));
@@ -94,7 +101,7 @@ function ProductDetailsPage({ history, match }) {
         id: pid,
         name: product?.name,
         price: unitPrice,
-        image: resolveImageURL(product?.image_url || product?.image),
+        image: productImage(product),
         variantId: activeVariant ? activeVariant.id : null,
         variantLabel: activeVariant ? activeVariant.label : "",
       },
@@ -104,22 +111,17 @@ function ProductDetailsPage({ history, match }) {
   };
 
   useEffect(() => {
-    const urlId = match?.params?.id;
-    if (urlId) {
-      dispatch(getProductDetails(urlId));
-    }
+    dispatch(getProductDetails(match.params.id));
     dispatch({ type: UPDATE_PRODUCT_RESET });
     dispatch({ type: CREATE_PRODUCT_RESET });
     dispatch({ type: CARD_CREATE_RESET });
-  }, [dispatch, match?.params?.id]);
+  }, [dispatch, match.params.id]);
 
   if (productDeletionSuccess) {
     alert("Product successfully deleted.");
     history.push("/");
     dispatch({ type: DELETE_PRODUCT_RESET });
   }
-
-  const img = resolveImageURL(product?.image_url || product?.image);
 
   return (
     <div>
@@ -163,7 +165,10 @@ function ProductDetailsPage({ history, match }) {
             <Col lg={6}>
               <div className="pd-media">
                 <div className="pd-media-frame">
-                  <img src={img} alt={product?.name} />
+                  <img
+                    src={productImage(product)}
+                    alt={product?.name}
+                  />
                   {hasDiscount &&
                     String(variantId) === String(promoVariantId) && (
                       <span className="pd-sale-badge pd-sale-badge--media">
@@ -213,7 +218,9 @@ function ProductDetailsPage({ history, match }) {
                           key={v.id}
                           type="button"
                           className={`pd-variant-pill${
-                            String(variantId) === String(v.id) ? " is-active" : ""
+                            String(variantId) === String(v.id)
+                              ? " is-active"
+                              : ""
                           }`}
                           disabled={!v.in_stock}
                           onClick={() => setVariantId(v.id)}
@@ -251,7 +258,9 @@ function ProductDetailsPage({ history, match }) {
                         </strong>
                       </>
                     ) : (
-                      <strong className="pd-price-new">{fmtMAD(unitPrice)}</strong>
+                      <strong className="pd-price-new">
+                        {fmtMAD(unitPrice)}
+                      </strong>
                     )}
                   </div>
                   {activeVariant && (
@@ -264,38 +273,64 @@ function ProductDetailsPage({ history, match }) {
                 <div className="mb-3">
                   <div className="pd-subtle mb-2">Quantité</div>
                   <div className="pd-qty">
-                    <button type="button" className="btn" onClick={minus} aria-label="minus">
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={minus}
+                      aria-label="minus"
+                    >
                       &minus;
                     </button>
                     <input
                       value={qty}
                       onChange={(e) => {
                         const v = Number(e.target.value);
-                        if (!Number.isNaN(v)) setQty(Math.max(1, Math.min(99, v)));
+                        if (!Number.isNaN(v))
+                          setQty(Math.max(1, Math.min(99, v)));
                       }}
                     />
-                    <button type="button" className="btn" onClick={plus} aria-label="plus">
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={plus}
+                      aria-label="plus"
+                    >
                       +
                     </button>
                   </div>
                 </div>
 
                 <div className="pd-actions mb-2">
-                  <button className="pd-btn-primary" onClick={addToCart} disabled={!product?.stock}>
-                    <i className="fas fa-shopping-bag mr-2" /> Ajouter au panier
+                  <button
+                    className="pd-btn-primary"
+                    onClick={addToCart}
+                    disabled={!product?.stock}
+                  >
+                    <i className="fas fa-shopping-bag mr-2" /> Ajouter au
+                    panier
                   </button>
-                  <button onClick={handleToggleWishlist} className="pd-btn-outline">
-                    {inWishlist ? "💔 Retirer de ma wishlist" : "🤍 Ajouter à ma wishlist"}
+                  <button
+                    onClick={handleToggleWishlist}
+                    className="pd-btn-outline"
+                  >
+                    {inWishlist
+                      ? "💔 Retirer de ma wishlist"
+                      : "🤍 Ajouter à ma wishlist"}
                   </button>
                   {userInfo && userInfo.admin && (
                     <>
                       <button
                         className="pd-btn-outline"
-                        onClick={() => history.push(`/product-update/${product.id}/`)}
+                        onClick={() =>
+                          history.push(`/product-update/${product.id}/`)
+                        }
                       >
                         Edit Product
                       </button>
-                      <button className="pd-btn-outline" onClick={() => setShow(true)}>
+                      <button
+                        className="pd-btn-outline"
+                        onClick={() => setShow(true)}
+                      >
                         Delete Product
                       </button>
                     </>
@@ -315,3 +350,4 @@ function ProductDetailsPage({ history, match }) {
 }
 
 export default ProductDetailsPage;
+
