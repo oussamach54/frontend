@@ -9,7 +9,7 @@ const ADMIN_CONTACT = {
   whatsappIntl: "212689398538",            // e.g. 212612345678
   whatsappPretty: "+212 6 89 39 85 38",    // how you want to display it
   email: "labshaay@gmail.com",
-  instagram: "https://instagram.com/@miniglowbyshay",
+  instagram: "https://instagram.com/miniglowbyshay",
   tiktok: "https://www.tiktok.com/@miniglowby_shay",
 };
 
