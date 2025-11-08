@@ -302,3 +302,31 @@ a:focus-visible, button:focus-visible, .dropdown-toggle:focus-visible{
 @media (max-width:480px){
   .pd .pd-variants .pd-variant-pill{ padding:9px 16px !important; }
 }
+/* Skincare video styling */
+.video-wrapper {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,.08);
+  background: #000;
+}
+
+.skincare-video {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Hide unwanted native overlays (PiP / overlay play button on some browsers) */
+.skincare-video::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
+
+.skincare-video::-webkit-media-controls-enclosure {
+  overflow: hidden !important;
+}
+
+.skincare-video::-webkit-media-controls {
+  display: none !important;
+}
