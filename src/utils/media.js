@@ -1,11 +1,7 @@
 /**
- * Turn a possibly-relative media path into an absolute URL that works
- * both locally and on production.
- *
- * Examples:
- *   "https://cdn.example.com/x.png"  -> stays the same
- *   "/images/p/1.png"                -> http://localhost:8000/images/p/1.png (local)
- *   "/images/p/1.png"                -> https://api.miniglowbyshay.cloud/images/p/1.png (prod)
+ * Build an absolute media URL that works locally and on production.
+ * - Absolute URLs are returned unchanged.
+ * - Relative paths are prefixed with the API origin.
  */
 export function resolveMedia(url) {
   if (!url) return "";
@@ -23,13 +19,21 @@ export function resolveMedia(url) {
   return url.startsWith("/") ? `${apiRoot}${url}` : `${apiRoot}/${url}`;
 }
 
-/** Convenience: pick image_url over image, then resolve */
+/**
+ * Safe, zero-request placeholder (1×1 transparent GIF) to avoid 404 spam.
+ * You can replace this with a real image if you want.
+ */
+export const FALLBACK_PRODUCT_IMG =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+/** Convenience: pick image_url over image, then resolve (with fallback). */
 export function productImage(product) {
-  return resolveMedia(product?.image_url || product?.image || "");
+  const raw = product?.image_url || product?.image || "";
+  const abs = resolveMedia(raw);
+  return raw ? abs : FALLBACK_PRODUCT_IMG;
 }
 
-/** Alias to satisfy older imports */
+/** Legacy alias used in older imports */
 export const resolveImageURL = resolveMedia;
-
 
 
