@@ -183,12 +183,19 @@ export default function HomePage() {
               </p>
               <Button variant="dark" size="lg" href="/products">Explorer les soins</Button>
             </Col>
+
             <Col md={7} className="video-col">
               <div className="video-wrapper">
-                <video autoPlay loop muted playsInline className="skincare-video" poster="/video/preview.jpg">
-                  <source src="/video/skincare.mp4" type="video/mp4" />
-                  Votre navigateur ne supporte pas la lecture vidéo.
-                </video>
+                <video
+                  className="skincare-video"
+                  src="/video/skincare.mp4"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  disablePictureInPicture
+                  controlsList="nodownload nofullscreen noremoteplayback"
+                />
               </div>
             </Col>
           </Row>
