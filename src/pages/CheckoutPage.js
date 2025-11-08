@@ -1,12 +1,15 @@
 // src/pages/CheckoutPage.js
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios"; // on le garde juste pour charger les tarifs publics
 import { Alert } from "react-bootstrap";
-
+import api from "../api";                    // 👈 use the shared API client
 import { useCart } from "../cart/CartProvider";
 import { SHOP } from "../config/shop";
 import "./checkout.css";
 
+/** Public endpoint used by ShippingRatesPage too */
+const PUBLIC_LIST = "/payments/shipping-rates/";
+
+/** Shown only if the API is unreachable */
 const FALLBACK_RATES = [
   { city: "Casablanca", price: 20 },
   { city: "Ain Harouda", price: 30 },
@@ -44,33 +47,42 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // Charger les tarifs publics si ton endpoint existe
+  // === Load shipping rates from the same API as the admin page ===
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const { data } = await axios.get("/api/shipping-rates/");
+        const { data } = await api.get(PUBLIC_LIST); // 👈 /payments/shipping-rates/
         if (!alive) return;
+
         if (Array.isArray(data) && data.length) {
           const normalized = data
-            .filter((r) => r.active !== false)
-            .map((r) => ({ city: r.city, price: Number(r.price) }))
+            .filter((r) => r.active !== false) // ignore explicitly disabled ones
+            .map((r) => ({
+              city: r.city || r.ville || "",
+              price: Number(r.price ?? r.tarif ?? 0),
+            }))
+            .filter((r) => r.city) // safety
             .sort((a, b) => a.city.localeCompare(b.city, "fr"));
-          setRates(normalized);
+          if (normalized.length) {
+            setRates(normalized);
+            return;
+          }
         }
+        // if API returned empty, keep fallback
       } catch {
-        // fallback ok
+        // keep fallback silently
       }
     })();
     return () => { alive = false; };
   }, []);
 
-  // Pré-sélection
+  // Preselect default city
   useEffect(() => {
     if (!rates.length) return;
-    const def = rates.find((r) => r.city === "Casablanca") || rates[0];
+    const def = rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
     setCity(def.city);
-    setShippingPrice(Number(def.price));
+    setShippingPrice(Number(def.price || 0));
   }, [rates]);
 
   const total = useMemo(
@@ -78,10 +90,9 @@ export default function CheckoutPage() {
     [totals.subtotal, shippingPrice]
   );
 
-  /** Construit l'URL wa.me avec un message complet */
+  /** Construit l'URL WhatsApp avec les détails de commande */
   const buildWhatsAppUrl = () => {
     const lines = [];
-
     lines.push(`*${SHOP.BRAND}* – Nouvelle commande`);
     lines.push("");
     lines.push("*Articles :*");
@@ -106,9 +117,7 @@ export default function CheckoutPage() {
     lines.push(`Nom : ${(first || "").trim()} ${(last || "").trim()}`.trim());
     lines.push(`Téléphone : ${phone || "-"}`);
     lines.push(
-      `Adresse : ${addr}${apt ? ", " + apt : ""}${zip ? ", " + zip : ""}${
-        city ? " – " + city : ""
-      }`.trim()
+      `Adresse : ${addr}${apt ? ", " + apt : ""}${zip ? ", " + zip : ""}${city ? " – " + city : ""}`.trim()
     );
     lines.push("");
     lines.push("Merci de confirmer ma commande 🙏");
@@ -128,9 +137,7 @@ export default function CheckoutPage() {
       return;
     }
     setLoading(true);
-    // Redirection WhatsApp
     window.location.href = buildWhatsAppUrl();
-    // pas de setLoading(false) : on quitte la page
   };
 
   return (
@@ -224,7 +231,6 @@ export default function CheckoutPage() {
         <button className="co-submit" onClick={submit} disabled={loading}>
           {loading ? "Redirection vers WhatsApp…" : "Valider le paiement"}
         </button>
-        
       </div>
 
       <aside className="co-right">
