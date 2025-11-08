@@ -55,5 +55,4 @@ export function productImage(product) {
 /** Backward-compat alias (old imports used resolveImageURL) */
 export const resolveImageURL = resolveMedia;
 
-/** Optional: a nice placeholder to avoid a broken image look */
-export const FALLBACK_PRODUCT_IMG = "/brand/placeholder-product.png";
+
