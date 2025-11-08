@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { toggleWishlist } from "../actions/wishlistActions";
 import { useCart } from "../cart/CartProvider";
-import { productImage, FALLBACK_PRODUCT_IMG } from "../utils/media";
+import { productImage } from "../utils/media";
 import "./HomeProducts.css";
 
 export default function HomeProductCard({ product }) {
@@ -11,7 +11,7 @@ export default function HomeProductCard({ product }) {
   const dispatch = useDispatch();
   const cart = useCart();
 
-  const img = productImage(product) || FALLBACK_PRODUCT_IMG;
+  const img = productImage(product);
 
   // promo only on biggest variant
   const promoVariantId = product.promo_variant_id;
@@ -58,13 +58,7 @@ export default function HomeProductCard({ product }) {
       )}
 
       <Link to={`/product/${id}/`} className="hp-media" aria-label={product.name}>
-        <img
-          src={img}
-          alt={product.name}
-          onError={(e) => {
-            e.currentTarget.src = FALLBACK_PRODUCT_IMG;
-          }}
-        />
+        <img src={img} alt={product.name} />
       </Link>
 
       <div className="hp-actions-row">
@@ -76,7 +70,11 @@ export default function HomeProductCard({ product }) {
         >
           <i className="fas fa-heart" />
         </button>
-        <Link className="hp-action-square" to={`/product/${id}/`} title="Voir le produit">
+        <Link
+          className="hp-action-square"
+          to={`/product/${id}/`}
+          title="Voir le produit"
+        >
           <i className="fas fa-eye" />
         </Link>
       </div>
