@@ -1,40 +1,33 @@
-// Decide API origin same way as src/api.js
-function chooseBaseURL() {
-  const env = (process.env.REACT_APP_API_URL || "").trim();
-  if (env) return env;
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    if (host.endsWith("miniglowbyshay.cloud") && !host.startsWith("api.")) {
-      return "https://api.miniglowbyshay.cloud";
-    }
-  }
-  return "http://localhost:8000";
-}
-
-const API_ORIGIN = chooseBaseURL();
-
 /**
- * Make any image path usable in the browser:
- * - absolute http(s): keep
- * - protocol-relative (//...): add https:
- * - /images/... or images/... or /media/...: prefix with API origin
- * - otherwise: return as-is (public asset)
+ * Turn a possibly-relative media path into an absolute URL that works
+ * both locally and on production.
+ *
+ * Examples:
+ *   "https://cdn.example.com/x.png"  -> stays the same
+ *   "/images/p/1.png"                -> http://localhost:8000/images/p/1.png (local)
+ *   "/images/p/1.png"                -> https://api.miniglowbyshay.cloud/images/p/1.png (prod)
  */
-export function resolveImageURL(src) {
-  if (!src) return "";
-  const s = String(src).trim();
+export function resolveMedia(url) {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
 
-  if (/^https?:\/\//i.test(s)) return s;
-  if (/^\/\//.test(s)) return `https:${s}`;
+  const isProdApp =
+    typeof window !== "undefined" &&
+    window.location.hostname.endsWith("miniglowbyshay.cloud") &&
+    !window.location.hostname.startsWith("api.");
 
-  // normalize leading slash
-  const rel = s.replace(/^\/+/, "");
+  const apiRoot = isProdApp
+    ? "https://api.miniglowbyshay.cloud"
+    : "http://localhost:8000";
 
-  if (/^(images|media)\//i.test(rel)) {
-    return `${API_ORIGIN}/${rel}`;
-  }
-  if (s.startsWith("/images/") || s.startsWith("/media/")) {
-    return `${API_ORIGIN}/${s.replace(/^\/+/, "")}`;
-  }
-  return s;
+  return url.startsWith("/") ? `${apiRoot}${url}` : `${apiRoot}/${url}`;
 }
+
+/** Convenience: pick image_url over image, then resolve */
+export function productImage(product) {
+  return resolveMedia(product?.image_url || product?.image || "");
+}
+
+/** Alias to satisfy older imports */
+export const resolveImageURL = resolveMedia;
+
