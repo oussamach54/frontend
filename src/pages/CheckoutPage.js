@@ -1,15 +1,12 @@
 // src/pages/CheckoutPage.js
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert } from "react-bootstrap";
-import api from "../api";                    // 👈 use the shared API client
+import api from "../api";
 import { useCart } from "../cart/CartProvider";
 import { SHOP } from "../config/shop";
 import "./checkout.css";
 
-/** Public endpoint used by ShippingRatesPage too */
-const PUBLIC_LIST = "/payments/shipping-rates/";
-
-/** Shown only if the API is unreachable */
+/** Fallback if API is unreachable */
 const FALLBACK_RATES = [
   { city: "Casablanca", price: 20 },
   { city: "Ain Harouda", price: 30 },
@@ -25,6 +22,23 @@ const FALLBACK_RATES = [
   { city: "Mohammedia : Mimosa", price: 45 },
   { city: "Livraison pour toutes les autres villes", price: 45 },
 ];
+
+/** Try a list of endpoints; return first success (200). */
+async function tryUrls(calls) {
+  let lastErr;
+  for (const call of calls) {
+    try {
+      const res = await call();
+      return res;
+    } catch (e) {
+      const code = e?.response?.status;
+      // 404/405 means path mismatch—try next; other codes bubble up
+      if (code !== 404 && code !== 405) throw e;
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("All endpoint candidates failed");
+}
 
 export default function CheckoutPage() {
   const { items, totals } = useCart();
@@ -47,40 +61,84 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // === Load shipping rates from the same API as the admin page ===
+  // === Load shipping rates; try multiple candidates in prod ===
   useEffect(() => {
     let alive = true;
+
+    const isProdApp =
+      typeof window !== "undefined" &&
+      window.location.hostname.endsWith("miniglowbyshay.cloud") &&
+      !window.location.hostname.startsWith("api.");
+
+    // absolute API base for cross-origin try (only used as a last resort)
+    const ABS_API = "https://api.miniglowbyshay.cloud";
+
     (async () => {
       try {
-        const { data } = await api.get(PUBLIC_LIST); // 👈 /payments/shipping-rates/
+        const { data, hit } = await tryUrls([
+          // 1) same as admin page (works locally and on many setups)
+          async () => {
+            const res = await api.get("/payments/shipping-rates/");
+            return { data: res.data, hit: "api: /payments/shipping-rates/" };
+          },
+          // 2) if a second /api is required (some proxies prepend/strip)
+          async () => {
+            const res = await api.get("/api/payments/shipping-rates/");
+            return { data: res.data, hit: "api: /api/payments/shipping-rates/" };
+          },
+          // 3) absolute cloud URL (when same-origin path mapping fails)
+          ...(isProdApp
+            ? [
+                async () => {
+                  const res = await fetch(`${ABS_API}/api/payments/shipping-rates/`, {
+                    credentials: "omit",
+                  });
+                  if (!res.ok) {
+                    const e = new Error(`HTTP ${res.status}`);
+                    e.response = { status: res.status };
+                    throw e;
+                  }
+                  const json = await res.json();
+                  return { data: json, hit: `abs: ${ABS_API}/api/payments/shipping-rates/` };
+                },
+              ]
+            : []),
+        ]);
+
         if (!alive) return;
 
         if (Array.isArray(data) && data.length) {
           const normalized = data
-            .filter((r) => r.active !== false) // ignore explicitly disabled ones
+            .filter((r) => r.active !== false)
             .map((r) => ({
               city: r.city || r.ville || "",
               price: Number(r.price ?? r.tarif ?? 0),
             }))
-            .filter((r) => r.city) // safety
+            .filter((r) => r.city)
             .sort((a, b) => a.city.localeCompare(b.city, "fr"));
+
           if (normalized.length) {
+            console.log("[Checkout] Shipping rates loaded from:", hit);
             setRates(normalized);
             return;
           }
         }
-        // if API returned empty, keep fallback
-      } catch {
-        // keep fallback silently
+        console.warn("[Checkout] API returned empty list; using fallback.");
+      } catch (e) {
+        console.warn("[Checkout] Failed to load API shipping rates; using fallback.", e?.message || e);
       }
     })();
-    return () => { alive = false; };
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   // Preselect default city
   useEffect(() => {
     if (!rates.length) return;
-    const def = rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
+    const def =
+      rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
     setCity(def.city);
     setShippingPrice(Number(def.price || 0));
   }, [rates]);
@@ -90,7 +148,7 @@ export default function CheckoutPage() {
     [totals.subtotal, shippingPrice]
   );
 
-  /** Construit l'URL WhatsApp avec les détails de commande */
+  /** WhatsApp message */
   const buildWhatsAppUrl = () => {
     const lines = [];
     lines.push(`*${SHOP.BRAND}* – Nouvelle commande`);
@@ -99,29 +157,29 @@ export default function CheckoutPage() {
     items.forEach((it) => {
       const q = Number(it.qty || 1);
       const p = Number(it.price).toFixed(2);
-      lines.push(`• ${it.name}${it.variantLabel ? " (" + it.variantLabel + ")" : ""} — ${p} MAD × ${q}`);
+      lines.push(
+        `• ${it.name}${it.variantLabel ? " (" + it.variantLabel + ")" : ""} — ${p} MAD × ${q}`
+      );
     });
     lines.push("");
-
     const ss = Number(totals.subtotal || 0).toFixed(2);
     const sp = Number(shippingPrice || 0).toFixed(2);
     const tt = Number(total).toFixed(2);
-
     lines.push(`Sous-total : ${ss} MAD`);
     lines.push(`Livraison : ${sp} MAD`);
     lines.push(`*Total : ${tt} MAD*`);
     lines.push("");
-
     lines.push("*Coordonnées :*");
     if (email) lines.push(`Email : ${email}`);
     lines.push(`Nom : ${(first || "").trim()} ${(last || "").trim()}`.trim());
     lines.push(`Téléphone : ${phone || "-"}`);
     lines.push(
-      `Adresse : ${addr}${apt ? ", " + apt : ""}${zip ? ", " + zip : ""}${city ? " – " + city : ""}`.trim()
+      `Adresse : ${addr}${apt ? ", " + apt : ""}${zip ? ", " + zip : ""}${
+        city ? " – " + city : ""
+      }`.trim()
     );
     lines.push("");
     lines.push("Merci de confirmer ma commande 🙏");
-
     const msg = encodeURIComponent(lines.join("\n"));
     return `https://wa.me/${SHOP.WHATSAPP}?text=${msg}`;
   };
