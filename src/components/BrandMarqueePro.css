@@ -1,73 +1,61 @@
-/* ===== Shell with subtle gradient (very light) ===== */
-.bmpro-shell {
-  position: relative;
-  padding: 34px 0;
-  overflow: hidden;
-  isolation: isolate;
+/* Container */
+.bm-wrap {
+  padding: 28px 0;
+  background: linear-gradient(180deg, #fff, #fff0);
+  border-top: 1px solid rgba(0, 0, 0, .05);
+  border-bottom: 1px solid rgba(0, 0, 0, .05);
 }
-.bmpro-gradient {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(900px 320px at 0% 0%, rgba(255, 172, 214, .18), transparent 55%),
-    radial-gradient(900px 320px at 100% 100%, rgba(144, 202, 249, .16), transparent 55%),
-    linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.80));
-  z-index: -1;
-}
-.bmpro-inner { max-width: 1280px; margin: 0 auto; }
 
-/* ===== Marquee mask + track ===== */
-.bmpro-mask { overflow: hidden; width: 100%; }
-.bmpro-track {
+/* Clipping mask so we don't see edges while animating */
+.bm-mask {
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Scrolling track */
+.bm-track {
   display: flex;
-  gap: 36px;
+  gap: 28px;
+  list-style: none;
   padding: 0;
   margin: 0;
-  list-style: none;
-  flex-wrap: nowrap;         /* keep one line */
-  will-change: transform;
-}
-.bmpro-track > * { flex: 0 0 auto; }
 
-/* Scroll to the RIGHT */
-.bmpro-right { animation: bmpro-right 26s linear infinite; }
-@keyframes bmpro-right {
-  from { transform: translateX(-50%); }  /* start half-way so the loop is seamless */
-  to   { transform: translateX(0); }
+  /* The magic: continuous scroll */
+  animation: bm-scroll 30s linear infinite;
 }
 
 /* Pause on hover (desktop) */
-.bmpro-mask:hover .bmpro-track { animation-play-state: paused; }
-
-/* ===== Brand “chip” – minimal, just text spacing ===== */
-.bmpro-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 6px;
+.bm-mask:hover .bm-track {
+  animation-play-state: paused;
 }
 
-/* Italic brand name */
-.bmpro-name {
-  font-style: italic;
+/* Brand pill */
+.bm-chip {
+  white-space: nowrap;
   font-weight: 600;
-  font-size: 1.05rem;
-  color: #1d1d1f;
-  letter-spacing: .2px;
-  opacity: .9;
-  transition: opacity .2s ease, transform .2s ease;
-}
-.bmpro-name:hover {
-  opacity: 1;
-  transform: translateY(-2px);
+  letter-spacing: .4px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: #f7f7f7;
+  border: 1px solid rgba(0,0,0,.06);
+  color: #333;
+  box-shadow: 0 1px 0 rgba(0,0,0,.03);
+  user-select: none;
 }
 
-/* Reduced motion */
+/* Keyframes – translate the whole row to the left */
+@keyframes bm-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); } /* because we duplicated content */
+}
+
+/* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .bmpro-right { animation: none; }
+  .bm-track { animation: none; }
 }
 
-/* Small screens */
+/* Small screens – tighter spacing */
 @media (max-width: 640px) {
-  .bmpro-track { gap: 22px; }
-  .bmpro-name  { font-size: 1rem; }
+  .bm-track { gap: 16px; }
+  .bm-chip { padding: 8px 12px; font-weight: 600; }
 }

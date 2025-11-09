@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { toggleWishlist } from "../actions/wishlistActions";
 import { useCart } from "../cart/CartProvider";
+import { productImage } from "../utils/media";
 import "./HomeProducts.css";
 
 export default function HomeProductCard({ product }) {
@@ -10,12 +11,14 @@ export default function HomeProductCard({ product }) {
   const dispatch = useDispatch();
   const cart = useCart();
 
-  // promo applies ONLY to the biggest variant (backend tells us which one)
+  const img = productImage(product);
+
+  // promo only on biggest variant
   const promoVariantId = product.promo_variant_id;
   const hasDiscount = !!product?.has_discount && !!promoVariantId;
-
-  // find the promo variant in the list (for title/UX)
-  const promoVariant = (product.variants || []).find(v => String(v.id) === String(promoVariantId));
+  const promoVariant = (product.variants || []).find(
+    (v) => String(v.id) === String(promoVariantId)
+  );
 
   const oldDisplay = hasDiscount
     ? Number(product.promo_variant_old_price || 0)
@@ -33,29 +36,45 @@ export default function HomeProductCard({ product }) {
         id,
         name: product.name + (promoVariant ? ` (${promoVariant.label})` : ""),
         price: newDisplay,
-        image: product.image_url || product.image,   // 👈 absolute URL when present
+        image: img,
         variantId: promoVariant ? promoVariant.id : null,
         variantLabel: promoVariant ? promoVariant.label : "",
       },
       1
     );
 
-  const addToWishlist = (e) => { e.preventDefault(); dispatch(toggleWishlist(id)); };
+  const addToWishlist = (e) => {
+    e.preventDefault();
+    dispatch(toggleWishlist(id));
+  };
 
   return (
     <article className="hp-card">
-      {!product.stock && <span className="hp-badge hp-badge--ko">Out of stock</span>}
-      {hasDiscount && <span className="hp-badge hp-badge--sale">-{percent}%</span>}
+      {!product.stock && (
+        <span className="hp-badge hp-badge--ko">Out of stock</span>
+      )}
+      {hasDiscount && (
+        <span className="hp-badge hp-badge--sale">-{percent}%</span>
+      )}
 
       <Link to={`/product/${id}/`} className="hp-media" aria-label={product.name}>
-        <img src={product.image_url || product.image} alt={product.name} /> {/* 👈 */}
+        <img src={img} alt={product.name} />
       </Link>
 
       <div className="hp-actions-row">
-        <button type="button" className="hp-action-square" title="Ajouter à la wishlist" onClick={addToWishlist}>
+        <button
+          type="button"
+          className="hp-action-square"
+          title="Ajouter à la wishlist"
+          onClick={addToWishlist}
+        >
           <i className="fas fa-heart" />
         </button>
-        <Link className="hp-action-square" to={`/product/${id}/`} title="Voir le produit">
+        <Link
+          className="hp-action-square"
+          to={`/product/${id}/`}
+          title="Voir le produit"
+        >
           <i className="fas fa-eye" />
         </Link>
       </div>
@@ -66,11 +85,14 @@ export default function HomeProductCard({ product }) {
 
       <div className="hp-body">
         <Link to={`/product/${id}/`} className="hp-title">
-          {product.name}{hasDiscount && promoVariant ? ` — ${promoVariant.label}` : ""}
+          {product.name}
+          {hasDiscount && promoVariant ? ` — ${promoVariant.label}` : ""}
         </Link>
 
         <div className="hp-price-wrap">
-          {hasDiscount && <span className="hp-price-old">{oldDisplay.toFixed(2)} MAD</span>}
+          {hasDiscount && (
+            <span className="hp-price-old">{oldDisplay.toFixed(2)} MAD</span>
+          )}
           <span className="hp-price-new">{newDisplay.toFixed(2)} MAD</span>
         </div>
       </div>

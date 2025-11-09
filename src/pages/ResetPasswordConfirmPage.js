@@ -1,8 +1,7 @@
-// src/pages/ResetPasswordPage.jsx
 import React, { useState } from "react";
-import axios from "axios";
 import { useParams, Link, useHistory } from "react-router-dom";
 import { Form, Button, Alert } from "react-bootstrap";
+import api from "../api";                // ✅ client commun (préfixe /api)
 import "./login-register.css";
 
 export default function ResetPasswordPage() {
@@ -17,19 +16,30 @@ export default function ResetPasswordPage() {
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
+
     if (!p1 || p1 !== p2) {
       setErr("Les mots de passe ne correspondent pas.");
       return;
     }
+
     try {
       setLoading(true);
-      await axios.post("/account/password-reset/confirm/", {
-        uid, token, password: p1,
-      });
+
+      // ✅ Clé attendue par le backend: new_password (pas "password")
+      await api.post(
+        "/account/password-reset/confirm/",
+        { uid, token, new_password: p1 },
+        { headers: { "Content-Type": "application/json" } }
+      );
+
       setOk(true);
       setTimeout(() => history.push("/login"), 1500);
     } catch (e) {
-      setErr(e?.response?.data?.detail || "Lien invalide ou expiré.");
+      const msg =
+        e?.response?.data?.detail ||
+        e?.response?.data?.message ||
+        "Lien invalide ou expiré.";
+      setErr(msg);
     } finally {
       setLoading(false);
     }

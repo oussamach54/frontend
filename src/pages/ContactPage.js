@@ -9,8 +9,8 @@ const ADMIN_CONTACT = {
   whatsappIntl: "212689398538",            // e.g. 212612345678
   whatsappPretty: "+212 6 89 39 85 38",    // how you want to display it
   email: "labshaay@gmail.com",
-  instagram: "https://instagram.com/myshop",
-  tiktok: "https://www.tiktok.com/@myshop",
+  instagram: "https://instagram.com/miniglowbyshay",
+  tiktok: "https://www.tiktok.com/@miniglowbyshay",
 };
 
 export default function ContactPage() {
@@ -139,7 +139,7 @@ export default function ContactPage() {
             </div>
             <div className="cc-info">
               <div className="cc-label">TikTok</div>
-              <div className="cc-value">@miniglowby_shy</div>
+              <div className="cc-value">@miniglowby_shay</div>
             </div>
             <div className="cc-actions">
               <a

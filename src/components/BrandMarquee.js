@@ -11,32 +11,31 @@ export default function BrandMarquee() {
       try {
         const { data } = await api.get("/brands/");
         if (alive) setBrands(Array.isArray(data) ? data : []);
-      } catch {/* non-blocking */}
+      } catch {
+        /* silent – not critical UI */
+      }
     })();
     return () => { alive = false; };
   }, []);
 
-  // duplicate for seamless loop
-  const items = useMemo(() => {
-    const base = (brands || []).filter(Boolean);
-    const fallback = ["The Ordinary", "CeraVe", "Nuxe", "La Roche-Posay", "COSRX"];
-    const list = base.length ? base : fallback;
-    return [...list, ...list];
+  // Duplicate items so the track loops seamlessly
+  const looped = useMemo(() => {
+    const safe = brands.filter(Boolean);
+    // Fall back to a few names if API returns empty (so section still has shape)
+    const base = safe.length ? safe : ["The Ordinary", "CeraVe", "Nuxe", "La Roche-Posay", "COSRX"];
+    return [...base, ...base, ...base];
   }, [brands]);
 
   return (
-    <section className="bmpro-shell" aria-label="Brands">
-      <div className="bmpro-gradient" />
-      <div className="bmpro-inner">
-        <div className="bmpro-mask">
-          <ul className="bmpro-track bmpro-right">
-            {items.map((name, i) => (
-              <li key={`${name}-${i}`} className="bmpro-chip" title={name}>
-                <span className="bmpro-name">{name}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+    <section className="bm-wrap" aria-label="Brands">
+      <div className="bm-mask">
+        <ul className="bm-track">
+          {looped.map((name, i) => (
+            <li key={`${name}-${i}`} className="bm-chip" title={name}>
+              {name}
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

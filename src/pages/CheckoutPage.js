@@ -1,12 +1,12 @@
 // src/pages/CheckoutPage.js
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios"; // on le garde juste pour charger les tarifs publics
 import { Alert } from "react-bootstrap";
-
+import api from "../api";
 import { useCart } from "../cart/CartProvider";
 import { SHOP } from "../config/shop";
 import "./checkout.css";
 
+/** Fallback if API is unreachable */
 const FALLBACK_RATES = [
   { city: "Casablanca", price: 20 },
   { city: "Ain Harouda", price: 30 },
@@ -22,6 +22,23 @@ const FALLBACK_RATES = [
   { city: "Mohammedia : Mimosa", price: 45 },
   { city: "Livraison pour toutes les autres villes", price: 45 },
 ];
+
+/** Try a list of endpoints; return first success (200). */
+async function tryUrls(calls) {
+  let lastErr;
+  for (const call of calls) {
+    try {
+      const res = await call();
+      return res;
+    } catch (e) {
+      const code = e?.response?.status;
+      // 404/405 means path mismatch—try next; other codes bubble up
+      if (code !== 404 && code !== 405) throw e;
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("All endpoint candidates failed");
+}
 
 export default function CheckoutPage() {
   const { items, totals } = useCart();
@@ -44,33 +61,86 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // Charger les tarifs publics si ton endpoint existe
+  // === Load shipping rates; try multiple candidates in prod ===
   useEffect(() => {
     let alive = true;
+
+    const isProdApp =
+      typeof window !== "undefined" &&
+      window.location.hostname.endsWith("miniglowbyshay.cloud") &&
+      !window.location.hostname.startsWith("api.");
+
+    // absolute API base for cross-origin try (only used as a last resort)
+    const ABS_API = "https://api.miniglowbyshay.cloud";
+
     (async () => {
       try {
-        const { data } = await axios.get("/api/shipping-rates/");
+        const { data, hit } = await tryUrls([
+          // 1) same as admin page (works locally and on many setups)
+          async () => {
+            const res = await api.get("/payments/shipping-rates/");
+            return { data: res.data, hit: "api: /payments/shipping-rates/" };
+          },
+          // 2) if a second /api is required (some proxies prepend/strip)
+          async () => {
+            const res = await api.get("/api/payments/shipping-rates/");
+            return { data: res.data, hit: "api: /api/payments/shipping-rates/" };
+          },
+          // 3) absolute cloud URL (when same-origin path mapping fails)
+          ...(isProdApp
+            ? [
+                async () => {
+                  const res = await fetch(`${ABS_API}/api/payments/shipping-rates/`, {
+                    credentials: "omit",
+                  });
+                  if (!res.ok) {
+                    const e = new Error(`HTTP ${res.status}`);
+                    e.response = { status: res.status };
+                    throw e;
+                  }
+                  const json = await res.json();
+                  return { data: json, hit: `abs: ${ABS_API}/api/payments/shipping-rates/` };
+                },
+              ]
+            : []),
+        ]);
+
         if (!alive) return;
+
         if (Array.isArray(data) && data.length) {
           const normalized = data
             .filter((r) => r.active !== false)
-            .map((r) => ({ city: r.city, price: Number(r.price) }))
+            .map((r) => ({
+              city: r.city || r.ville || "",
+              price: Number(r.price ?? r.tarif ?? 0),
+            }))
+            .filter((r) => r.city)
             .sort((a, b) => a.city.localeCompare(b.city, "fr"));
-          setRates(normalized);
+
+          if (normalized.length) {
+            console.log("[Checkout] Shipping rates loaded from:", hit);
+            setRates(normalized);
+            return;
+          }
         }
-      } catch {
-        // fallback ok
+        console.warn("[Checkout] API returned empty list; using fallback.");
+      } catch (e) {
+        console.warn("[Checkout] Failed to load API shipping rates; using fallback.", e?.message || e);
       }
     })();
-    return () => { alive = false; };
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
-  // Pré-sélection
+  // Preselect default city
   useEffect(() => {
     if (!rates.length) return;
-    const def = rates.find((r) => r.city === "Casablanca") || rates[0];
+    const def =
+      rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
     setCity(def.city);
-    setShippingPrice(Number(def.price));
+    setShippingPrice(Number(def.price || 0));
   }, [rates]);
 
   const total = useMemo(
@@ -78,29 +148,27 @@ export default function CheckoutPage() {
     [totals.subtotal, shippingPrice]
   );
 
-  /** Construit l'URL wa.me avec un message complet */
+  /** WhatsApp message */
   const buildWhatsAppUrl = () => {
     const lines = [];
-
     lines.push(`*${SHOP.BRAND}* – Nouvelle commande`);
     lines.push("");
     lines.push("*Articles :*");
     items.forEach((it) => {
       const q = Number(it.qty || 1);
       const p = Number(it.price).toFixed(2);
-      lines.push(`• ${it.name}${it.variantLabel ? " (" + it.variantLabel + ")" : ""} — ${p} MAD × ${q}`);
+      lines.push(
+        `• ${it.name}${it.variantLabel ? " (" + it.variantLabel + ")" : ""} — ${p} MAD × ${q}`
+      );
     });
     lines.push("");
-
     const ss = Number(totals.subtotal || 0).toFixed(2);
     const sp = Number(shippingPrice || 0).toFixed(2);
     const tt = Number(total).toFixed(2);
-
     lines.push(`Sous-total : ${ss} MAD`);
     lines.push(`Livraison : ${sp} MAD`);
     lines.push(`*Total : ${tt} MAD*`);
     lines.push("");
-
     lines.push("*Coordonnées :*");
     if (email) lines.push(`Email : ${email}`);
     lines.push(`Nom : ${(first || "").trim()} ${(last || "").trim()}`.trim());
@@ -112,7 +180,6 @@ export default function CheckoutPage() {
     );
     lines.push("");
     lines.push("Merci de confirmer ma commande 🙏");
-
     const msg = encodeURIComponent(lines.join("\n"));
     return `https://wa.me/${SHOP.WHATSAPP}?text=${msg}`;
   };
@@ -128,9 +195,7 @@ export default function CheckoutPage() {
       return;
     }
     setLoading(true);
-    // Redirection WhatsApp
     window.location.href = buildWhatsAppUrl();
-    // pas de setLoading(false) : on quitte la page
   };
 
   return (
@@ -224,7 +289,6 @@ export default function CheckoutPage() {
         <button className="co-submit" onClick={submit} disabled={loading}>
           {loading ? "Redirection vers WhatsApp…" : "Valider le paiement"}
         </button>
-        
       </div>
 
       <aside className="co-right">

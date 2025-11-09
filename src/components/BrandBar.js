@@ -98,7 +98,7 @@ export default function BrandBar() {
           <Link to="/" className="brand-logo-link" aria-label="Home">
             <img
               src="/brand/logop.png"
-              alt="Beauty Shop"
+              alt="MiniGlowByshay"
               className="brand-logo-img"
             />
           </Link>
