@@ -7,6 +7,22 @@ import { checkTokenValidation, logout } from '../actions/userActions';
 import { UPDATE_PRODUCT_RESET } from '../constants';
 import Message from '../components/Message';
 
+const CATEGORY_OPTIONS = [
+  { value: "face", label: "Face" },
+  { value: "lips", label: "Lips" },
+  { value: "eyes", label: "Eyes" },
+  { value: "eyebrow", label: "Eyebrow" },
+  { value: "hair", label: "Hair" },
+  { value: "body", label: "Corps" },
+  { value: "packs", label: "Packs" },
+  { value: "acne", label: "Acné" },
+  { value: "hyper_pigmentation", label: "Hyper pigmentation" },
+  { value: "brightening", label: "Éclaircissement" },
+  { value: "dry_skin", label: "Peau sèche" },
+  { value: "combination_oily", label: "Peau mixte/grasse" },
+  { value: "other", label: "Other" },
+];
+
 export default function ProductUpdatePage({ match }) {
   const productId = match.params.id;
   const history = useHistory();
@@ -15,28 +31,20 @@ export default function ProductUpdatePage({ match }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [brand, setBrand] = useState('');
-  const [category, setCategory] = useState('other');
+  const [categories, setCategories] = useState(['other']); // multi
 
-  // base + promo
   const [price, setPrice] = useState('');
   const [newPrice, setNewPrice] = useState('');
   const [discountPct, setDiscountPct] = useState('');
-
   const [stock, setStock] = useState(false);
-
-  // Image
   const [newImage, setNewImage] = useState(false);
   const [image, setImage] = useState(null);
 
-  // Variants
   const [variants, setVariants] = useState([]);
-  const addVariantRow = () =>
-    setVariants(v => [...v, { label: '', size_ml: '', price: '', in_stock: true, sku: '' }]);
+  const addVariantRow = () => setVariants(v => [...v, { label: '', size_ml: '', price: '', in_stock: true, sku: '' }]);
   const removeVariantRow = (idx) => setVariants(v => v.filter((_, i) => i !== idx));
-  const changeVariant = (idx, field, value) =>
-    setVariants(v => v.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
+  const changeVariant = (idx, field, value) => setVariants(v => v.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
 
-  // reducers
   const { userInfo } = useSelector(s => s.userLoginReducer || {});
   const { product, loading: loadingDetails } = useSelector(s => s.productDetailsReducer || {});
   const { success, loading: loadingUpdate, error } = useSelector(s => s.updateProductReducer || {});
@@ -53,7 +61,10 @@ export default function ProductUpdatePage({ match }) {
     setName(product.name || '');
     setDescription(product.description || '');
     setBrand(product.brand || '');
-    setCategory(product.category || 'other');
+    const initCats = Array.isArray(product.categories) && product.categories.length
+      ? product.categories
+      : [product.category || 'other'];
+    setCategories(initCats);
     setPrice(String(product.price ?? ''));
     setNewPrice(product.new_price != null ? String(product.new_price) : '');
     setStock(!!product.stock);
@@ -68,11 +79,7 @@ export default function ProductUpdatePage({ match }) {
     );
   }, [product]);
 
-  // normalize commas to dots
-  const norm = (x) =>
-    x === null || x === undefined ? "" : String(x).replace(",", ".");
-
-  // % helper
+  const norm = (x) => x == null ? "" : String(x).replace(",", ".");
   const applyPercent = () => {
     const base = parseFloat(norm(price));
     const pct = parseFloat(norm(discountPct));
@@ -83,14 +90,15 @@ export default function ProductUpdatePage({ match }) {
   const onSubmit = (e) => {
     e.preventDefault();
     const fd = new FormData();
-
     fd.append('name', name);
     fd.append('description', description);
-    fd.append('price', norm(price));                 // ← dot decimal
-    fd.append('new_price', newPrice === '' ? '' : norm(newPrice)); // '' clears promo
+    fd.append('price', norm(price));
+    fd.append('new_price', newPrice === '' ? '' : norm(newPrice));
     fd.append('stock', stock);
     fd.append('brand', brand);
-    fd.append('category', category);
+    // keep both
+    fd.append('category', categories[0] || 'other');
+    fd.append('categories', JSON.stringify(categories));
     if (newImage && image) fd.append('image', image);
 
     const clean = variants
@@ -120,6 +128,11 @@ export default function ProductUpdatePage({ match }) {
     window.location.reload();
   }
 
+  const onChangeCategories = (e) => {
+    const values = Array.from(e.target.selectedOptions).map(o => o.value);
+    setCategories(values.length ? values : ['other']);
+  };
+
   return (
     <div>
       <span className="d-flex justify-content-center text-info"><em>Edit Product</em></span>
@@ -141,7 +154,6 @@ export default function ProductUpdatePage({ match }) {
 
       {product && (
         <Form onSubmit={onSubmit}>
-          {/* Image */}
           <Form.Group controlId="image">
             <Form.Label><b>Product Image</b></Form.Label>
             <p>{product.image && <img src={product.image} alt={product.name} height="200" />}</p>
@@ -151,7 +163,7 @@ export default function ProductUpdatePage({ match }) {
                 <span onClick={() => { setNewImage(false); setImage(null); }} className="btn btn-primary btn-sm mt-2">Cancel</span>
               </>
             ) : (
-              <p><span onClick={() => setNewImage(true)} className="btn btn-success btn-sm">choose different image</span></p>
+              <p><span onClick={() => setNewImage(true)} className="btn btn.success btn-sm">choose different image</span></p>
             )}
           </Form.Group>
 
@@ -170,25 +182,22 @@ export default function ProductUpdatePage({ match }) {
             <Form.Control value={brand} onChange={(e) => setBrand(e.target.value)} />
           </Form.Group>
 
-          <Form.Group controlId="category">
-            <Form.Label><b>Category</b></Form.Label>
-            <Form.Control as="select" value={category} onChange={(e) => setCategory(e.target.value)}>
-              <option value="face">Face</option>
-              <option value="lips">Lips</option>
-              <option value="eyes">Eyes</option>
-              <option value="eyebrow">Eyebrow</option>
-              <option value="hair">Hair</option>
-              <option value="other">Other</option>
+          {/* MULTI CATEGORIES */}
+          <Form.Group controlId="categories">
+            <Form.Label><b>Categories</b></Form.Label>
+            <Form.Control as="select" multiple value={categories} onChange={onChangeCategories} style={{ minHeight: 160 }}>
+              {CATEGORY_OPTIONS.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
             </Form.Control>
+            <small className="text-muted">The first selection is the primary category.</small>
           </Form.Group>
 
-          {/* Base price */}
           <Form.Group controlId="price">
             <Form.Label><b>Base price</b></Form.Label>
             <Form.Control type="text" value={price} placeholder="ex. 199,00" onChange={(e) => setPrice(e.target.value)} />
           </Form.Group>
 
-          {/* % helper */}
           <Form.Group controlId="discountPct">
             <Form.Label><b>Discount % (helper)</b></Form.Label>
             <InputGroup>
@@ -200,7 +209,6 @@ export default function ProductUpdatePage({ match }) {
             <small className="text-muted">Calculé à partir du <b>Base price</b>.</small>
           </Form.Group>
 
-          {/* New price */}
           <Form.Group controlId="new_price">
             <Form.Label><b>New price (promotion)</b></Form.Label>
             <Form.Control type="text" value={newPrice} placeholder="ex. 155,00 (vide = pas de promo)" onChange={(e) => setNewPrice(e.target.value)} />
@@ -211,7 +219,6 @@ export default function ProductUpdatePage({ match }) {
             <Form.Check className="ml-2" type="checkbox" checked={stock} onChange={() => setStock(!stock)} />
           </div>
 
-          {/* Variants */}
           <Form.Group>
             <Form.Label><b>Sizes / Variants</b></Form.Label>
             {variants.map((row, i) => (
