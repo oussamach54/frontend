@@ -44,6 +44,15 @@ function NavBar() {
                 <LinkContainer to="/products?type=eyes"><NavDropdown.Item>Yeux</NavDropdown.Item></LinkContainer>
                 <LinkContainer to="/products?type=eyebrow"><NavDropdown.Item>Sourcils</NavDropdown.Item></LinkContainer>
                 <LinkContainer to="/products?type=hair"><NavDropdown.Item>Cheveux</NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=face"><NavDropdown.Item>Corps</NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=face"><NavDropdown.Item>Packs</NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=face"><NavDropdown.Item>Acné </NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=face"><NavDropdown.Item>Hyper pigmentation 
+</NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=face"><NavDropdown.Item>Éclaircissement</NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=face"><NavDropdown.Item>Peau sèche 
+</NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=face"><NavDropdown.Item>Peau mixte/grasse</NavDropdown.Item></LinkContainer>
               </NavDropdown>
 
               <LinkContainer to="/brands">
