@@ -10,7 +10,7 @@ import Message from "../components/Message";
 const CATEGORY_OPTIONS = [
   { value: "face", label: "Visage" },
   { value: "lips", label: "Lèvres" },
-  { value: "eyes", label: "Yeaux" },
+  { value: "eyes", label: "Yeux" },
   { value: "eyebrow", label: "Sourcils" },
   { value: "hair", label: "Cheveux" },
   { value: "body", label: "Corps" },
