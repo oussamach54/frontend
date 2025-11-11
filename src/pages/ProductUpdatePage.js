@@ -8,11 +8,11 @@ import { UPDATE_PRODUCT_RESET } from '../constants';
 import Message from '../components/Message';
 
 const CATEGORY_OPTIONS = [
-  { value: "face", label: "Face" },
-  { value: "lips", label: "Lips" },
-  { value: "eyes", label: "Eyes" },
-  { value: "eyebrow", label: "Eyebrow" },
-  { value: "hair", label: "Hair" },
+  { value: "face", label: "Visage" },
+  { value: "lips", label: "Lèvres" },
+  { value: "eyes", label: "Yeux" },
+  { value: "eyebrow", label: "Sourcils" },
+  { value: "hair", label: "Cheveux" },
   { value: "body", label: "Corps" },
   { value: "packs", label: "Packs" },
   { value: "acne", label: "Acné" },
