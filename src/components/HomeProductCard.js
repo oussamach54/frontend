@@ -1,3 +1,4 @@
+// src/components/HomeProductCard.js
 import React from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -5,6 +6,23 @@ import { toggleWishlist } from "../actions/wishlistActions";
 import { useCart } from "../cart/CartProvider";
 import { productImage } from "../utils/media";
 import "./HomeProducts.css";
+
+// Optional: pretty labels for category chips
+const CAT_LABELS = {
+  face: "VISAGE",
+  lips: "LÈVRES",
+  eyes: "YEUX",
+  eyebrow: "SOURCILS",
+  hair: "CHEVEUX",
+  body: "CORPS",
+  packs: "PACKS",
+  acne: "ACNÉ",
+  hyper_pigmentation: "HYPER PIGMENTATION",
+  brightening: "ÉCLAIRCISSEMENT",
+  dry_skin: "PEAU SÈCHE",
+  combination_oily: "PEAU MIXTE/GRASSE",
+  other: "AUTRES",
+};
 
 export default function HomeProductCard({ product }) {
   const id = product.id ?? product._id;
@@ -48,6 +66,16 @@ export default function HomeProductCard({ product }) {
     dispatch(toggleWishlist(id));
   };
 
+  // ---- NEW: build list of category chips (primary + additional) ----
+  const primary = (product.category || "").trim();
+  const extrasRaw = Array.isArray(product.categories) ? product.categories : [];
+  // de-dupe & keep primary first
+  const extras = extrasRaw.filter(
+    (c) => c && String(c).trim().toLowerCase() !== primary.toLowerCase()
+  );
+  const chips = primary ? [primary, ...extras] : extras;
+  // -----------------------------------------------------------------
+
   return (
     <article className="hp-card">
       {!product.stock && (
@@ -89,6 +117,27 @@ export default function HomeProductCard({ product }) {
           {hasDiscount && promoVariant ? ` — ${promoVariant.label}` : ""}
         </Link>
 
+        {/* NEW: show category chips */}
+        {chips.length > 0 && (
+          <div className="mt-1 d-flex flex-wrap" style={{ gap: 6 }}>
+            {chips.map((c) => {
+              const key = String(c);
+              const slug = key.toLowerCase();
+              const label = CAT_LABELS[slug] || key;
+              return (
+                <span
+                  key={key}
+                  className="badge badge-light"
+                  style={{ border: "1px solid #eee", fontWeight: 500 }}
+                  title={label}
+                >
+                  {label}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
         <div className="hp-price-wrap">
           {hasDiscount && (
             <span className="hp-price-old">{oldDisplay.toFixed(2)} MAD</span>
@@ -99,4 +148,5 @@ export default function HomeProductCard({ product }) {
     </article>
   );
 }
+
 
