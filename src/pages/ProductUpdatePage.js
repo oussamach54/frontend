@@ -31,20 +31,30 @@ export default function ProductUpdatePage({ match }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [brand, setBrand] = useState('');
-  const [categories, setCategories] = useState(['other']); // multi
 
+  // categories (multi)
+  const [categories, setCategories] = useState(['other']);
+
+  // prices
   const [price, setPrice] = useState('');
-  const [newPrice, setNewPrice] = useState('');
   const [discountPct, setDiscountPct] = useState('');
+  const [newPrice, setNewPrice] = useState('');
+
   const [stock, setStock] = useState(false);
+
+  // image
   const [newImage, setNewImage] = useState(false);
   const [image, setImage] = useState(null);
 
+  // variants
   const [variants, setVariants] = useState([]);
-  const addVariantRow = () => setVariants(v => [...v, { label: '', size_ml: '', price: '', in_stock: true, sku: '' }]);
+  const addVariantRow = () =>
+    setVariants(v => [...v, { label: '', size_ml: '', price: '', in_stock: true, sku: '' }]);
   const removeVariantRow = (idx) => setVariants(v => v.filter((_, i) => i !== idx));
-  const changeVariant = (idx, field, value) => setVariants(v => v.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
+  const changeVariant = (idx, field, value) =>
+    setVariants(v => v.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
 
+  // reducers
   const { userInfo } = useSelector(s => s.userLoginReducer || {});
   const { product, loading: loadingDetails } = useSelector(s => s.productDetailsReducer || {});
   const { success, loading: loadingUpdate, error } = useSelector(s => s.updateProductReducer || {});
@@ -79,7 +89,7 @@ export default function ProductUpdatePage({ match }) {
     );
   }, [product]);
 
-  const norm = (x) => x == null ? "" : String(x).replace(",", ".");
+  const norm = (x) => (x == null ? "" : String(x).replace(",", "."));
   const applyPercent = () => {
     const base = parseFloat(norm(price));
     const pct = parseFloat(norm(discountPct));
@@ -87,18 +97,44 @@ export default function ProductUpdatePage({ match }) {
     setNewPrice(String(+(base * (100 - pct) / 100).toFixed(2)));
   };
 
+  // multi-category helpers
+  const isChecked = (val) => categories.includes(val);
+  const toggleCategory = (val) => {
+    setCategories((prev) => {
+      if (prev.includes(val)) {
+        const next = prev.filter((x) => x !== val);
+        return next.length ? next : ["other"];
+      } else {
+        const next = [...prev, val];
+        if (next[0] === "other" && val !== "other") {
+          return [val, ...next.filter((x) => x !== "other")];
+        }
+        return next;
+      }
+    });
+  };
+  const makePrimary = (val) => {
+    setCategories((prev) => {
+      const list = prev.includes(val) ? prev : [...prev, val];
+      return [val, ...list.filter((x) => x !== val)];
+    });
+  };
+
   const onSubmit = (e) => {
     e.preventDefault();
     const fd = new FormData();
+
     fd.append('name', name);
     fd.append('description', description);
     fd.append('price', norm(price));
-    fd.append('new_price', newPrice === '' ? '' : norm(newPrice));
+    fd.append('new_price', newPrice === '' ? '' : norm(newPrice)); // '' clears promo
     fd.append('stock', stock);
     fd.append('brand', brand);
-    // keep both
+
+    // keep both for compatibility
     fd.append('category', categories[0] || 'other');
     fd.append('categories', JSON.stringify(categories));
+
     if (newImage && image) fd.append('image', image);
 
     const clean = variants
@@ -128,11 +164,6 @@ export default function ProductUpdatePage({ match }) {
     window.location.reload();
   }
 
-  const onChangeCategories = (e) => {
-    const values = Array.from(e.target.selectedOptions).map(o => o.value);
-    setCategories(values.length ? values : ['other']);
-  };
-
   return (
     <div>
       <span className="d-flex justify-content-center text-info"><em>Edit Product</em></span>
@@ -154,6 +185,7 @@ export default function ProductUpdatePage({ match }) {
 
       {product && (
         <Form onSubmit={onSubmit}>
+          {/* Image */}
           <Form.Group controlId="image">
             <Form.Label><b>Product Image</b></Form.Label>
             <p>{product.image && <img src={product.image} alt={product.name} height="200" />}</p>
@@ -163,7 +195,7 @@ export default function ProductUpdatePage({ match }) {
                 <span onClick={() => { setNewImage(false); setImage(null); }} className="btn btn-primary btn-sm mt-2">Cancel</span>
               </>
             ) : (
-              <p><span onClick={() => setNewImage(true)} className="btn btn.success btn-sm">choose different image</span></p>
+              <p><span onClick={() => setNewImage(true)} className="btn btn-success btn-sm">choose different image</span></p>
             )}
           </Form.Group>
 
@@ -182,28 +214,62 @@ export default function ProductUpdatePage({ match }) {
             <Form.Control value={brand} onChange={(e) => setBrand(e.target.value)} />
           </Form.Group>
 
-          {/* MULTI CATEGORIES */}
+          {/* ====== Multi categories (checkboxes + primary) ====== */}
           <Form.Group controlId="categories">
             <Form.Label><b>Categories</b></Form.Label>
-            <Form.Control as="select" multiple value={categories} onChange={onChangeCategories} style={{ minHeight: 160 }}>
-              {CATEGORY_OPTIONS.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </Form.Control>
-            <small className="text-muted">The first selection is the primary category.</small>
+            <details style={{ border: '1px solid #eee', borderRadius: 8, padding: 12 }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+                Click to choose (you can select many)
+              </summary>
+
+              <div className="mt-3"
+                   style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+                {CATEGORY_OPTIONS.map((opt) => (
+                  <div key={opt.value}
+                       className="d-flex align-items-center justify-content-between"
+                       style={{ border: '1px solid #eee', borderRadius: 8, padding: '8px 10px' }}>
+                    <Form.Check
+                      type="checkbox"
+                      id={`cat_${opt.value}`}
+                      label={opt.label}
+                      checked={isChecked(opt.value)}
+                      onChange={() => toggleCategory(opt.value)}
+                    />
+                    <Button
+                      size="sm"
+                      variant={categories[0] === opt.value ? 'success' : 'outline-secondary'}
+                      onClick={() => makePrimary(opt.value)}
+                      disabled={!isChecked(opt.value)}
+                      title="Set as primary"
+                    >
+                      {categories[0] === opt.value ? 'Primary' : 'Make primary'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </details>
+            <small className="text-muted d-block mt-2">
+              The first selected category is the <b>primary</b>.
+            </small>
           </Form.Group>
 
+          {/* Prices */}
           <Form.Group controlId="price">
             <Form.Label><b>Base price</b></Form.Label>
-            <Form.Control type="text" value={price} placeholder="ex. 199,00" onChange={(e) => setPrice(e.target.value)} />
+            <Form.Control type="text" value={price} placeholder="ex. 199,00"
+                          onChange={(e) => setPrice(e.target.value)} />
           </Form.Group>
 
           <Form.Group controlId="discountPct">
             <Form.Label><b>Discount % (helper)</b></Form.Label>
             <InputGroup>
-              <Form.Control type="number" step="1" min="1" max="95" value={discountPct} placeholder="ex. 22" onChange={(e) => setDiscountPct(e.target.value)} />
+              <Form.Control type="number" step="1" min="1" max="95"
+                            value={discountPct} placeholder="ex. 22"
+                            onChange={(e) => setDiscountPct(e.target.value)} />
               <InputGroup.Append>
-                <Button variant="outline-secondary" onClick={applyPercent}>Apply to New price</Button>
+                <Button variant="outline-secondary" onClick={applyPercent}>
+                  Apply to New price
+                </Button>
               </InputGroup.Append>
             </InputGroup>
             <small className="text-muted">Calculé à partir du <b>Base price</b>.</small>
@@ -211,7 +277,9 @@ export default function ProductUpdatePage({ match }) {
 
           <Form.Group controlId="new_price">
             <Form.Label><b>New price (promotion)</b></Form.Label>
-            <Form.Control type="text" value={newPrice} placeholder="ex. 155,00 (vide = pas de promo)" onChange={(e) => setNewPrice(e.target.value)} />
+            <Form.Control type="text" value={newPrice}
+                          placeholder="ex. 155,00 (vide = pas de promo)"
+                          onChange={(e) => setNewPrice(e.target.value)} />
           </Form.Group>
 
           <div className="d-flex align-items-center mb-3">
@@ -219,23 +287,35 @@ export default function ProductUpdatePage({ match }) {
             <Form.Check className="ml-2" type="checkbox" checked={stock} onChange={() => setStock(!stock)} />
           </div>
 
+          {/* Variants */}
           <Form.Group>
             <Form.Label><b>Sizes / Variants</b></Form.Label>
             {variants.map((row, i) => (
               <div key={i} className="d-flex align-items-center mb-2" style={{ gap: 8 }}>
-                <Form.Control style={{ maxWidth: 240 }} placeholder="Label (e.g. 500 ml)" value={row.label} onChange={(e) => changeVariant(i, 'label', e.target.value)} />
-                <Form.Control type="text" style={{ maxWidth: 120 }} placeholder="Size ml (opt.)" value={row.size_ml} onChange={(e) => changeVariant(i, 'size_ml', e.target.value)} />
-                <Form.Control type="text" style={{ maxWidth: 140 }} placeholder="Price" value={row.price} onChange={(e) => changeVariant(i, 'price', e.target.value)} />
-                <Form.Check className="ml-2" label="In stock" checked={row.in_stock} onChange={(e) => changeVariant(i, 'in_stock', e.target.checked)} />
-                <Form.Control style={{ maxWidth: 140 }} placeholder="SKU (opt.)" value={row.sku} onChange={(e) => changeVariant(i, 'sku', e.target.value)} />
-                <Button variant="outline-danger" size="sm" className="ml-2" onClick={() => removeVariantRow(i)}>Remove</Button>
+                <Form.Control style={{ maxWidth: 240 }} placeholder="Label (e.g. 500 ml)"
+                              value={row.label} onChange={(e) => changeVariant(i, 'label', e.target.value)} />
+                <Form.Control type="text" style={{ maxWidth: 120 }} placeholder="Size ml (opt.)"
+                              value={row.size_ml} onChange={(e) => changeVariant(i, 'size_ml', e.target.value)} />
+                <Form.Control type="text" style={{ maxWidth: 140 }} placeholder="Price"
+                              value={row.price} onChange={(e) => changeVariant(i, 'price', e.target.value)} />
+                <Form.Check className="ml-2" label="In stock" checked={row.in_stock}
+                            onChange={(e) => changeVariant(i, 'in_stock', e.target.checked)} />
+                <Form.Control style={{ maxWidth: 140 }} placeholder="SKU (opt.)"
+                              value={row.sku} onChange={(e) => changeVariant(i, 'sku', e.target.value)} />
+                <Button variant="outline-danger" size="sm" className="ml-2" onClick={() => removeVariantRow(i)}>
+                  Remove
+                </Button>
               </div>
             ))}
-            <Button variant="outline-secondary" size="sm" className="mt-2" onClick={addVariantRow}>+ Add size</Button>
+            <Button variant="outline-secondary" size="sm" className="mt-2" onClick={addVariantRow}>
+              + Add size
+            </Button>
           </Form.Group>
 
           <Button type="submit" variant="success" className="btn-sm mb-4">Save Changes</Button>
-          <Button onClick={() => history.push(`/product/${productId}/`)} variant="primary" className="btn-sm ml-2 mb-4">Cancel</Button>
+          <Button onClick={() => history.push(`/product/${productId}/`)} variant="primary" className="btn-sm ml-2 mb-4">
+            Cancel
+          </Button>
         </Form>
       )}
     </div>
