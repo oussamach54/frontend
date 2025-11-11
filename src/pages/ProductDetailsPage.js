@@ -1,3 +1,4 @@
+// src/pages/ProductDetailsPage.js
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Spinner, Row, Col, Container, Button, Modal } from "react-bootstrap";
@@ -12,6 +13,23 @@ import {
   CARD_CREATE_RESET,
 } from "../constants";
 import { productImage } from "../utils/media";
+
+// Nice labels for category chips (same map you used in cards/list)
+const CAT_LABELS = {
+  face: "VISAGE",
+  lips: "LÈVRES",
+  eyes: "YEUX",
+  eyebrow: "SOURCILS",
+  hair: "CHEVEUX",
+  body: "CORPS",
+  packs: "PACKS",
+  acne: "ACNÉ",
+  hyper_pigmentation: "HYPER PIGMENTATION",
+  brightening: "ÉCLAIRCISSEMENT",
+  dry_skin: "PEAU SÈCHE",
+  combination_oily: "PEAU MIXTE/GRASSE",
+  other: "AUTRES",
+};
 
 function ProductDetailsPage({ history, match }) {
   const dispatch = useDispatch();
@@ -123,6 +141,15 @@ function ProductDetailsPage({ history, match }) {
     dispatch({ type: DELETE_PRODUCT_RESET });
   }
 
+  // ----- NEW: build the full category list (primary + extras) -----
+  const primary = (product?.category || "").trim();
+  const extrasRaw = Array.isArray(product?.categories) ? product.categories : [];
+  const extras = extrasRaw.filter(
+    (c) => c && String(c).trim().toLowerCase() !== primary.toLowerCase()
+  );
+  const allCats = primary ? [primary, ...extras] : extras;
+  // ---------------------------------------------------------------
+
   return (
     <div>
       <Modal show={show} onHide={() => setShow(false)}>
@@ -165,10 +192,7 @@ function ProductDetailsPage({ history, match }) {
             <Col lg={6}>
               <div className="pd-media">
                 <div className="pd-media-frame">
-                  <img
-                    src={productImage(product)}
-                    alt={product?.name}
-                  />
+                  <img src={productImage(product)} alt={product?.name} />
                   {hasDiscount &&
                     String(variantId) === String(promoVariantId) && (
                       <span className="pd-sale-badge pd-sale-badge--media">
@@ -183,13 +207,29 @@ function ProductDetailsPage({ history, match }) {
               <div className="pd-card mb-3">
                 <h2 className="pd-title">{product?.name}</h2>
 
-                <div className="pd-subtle mb-3">
-                  {product?.category ? (
-                    <>
-                      Catégorie : <b>{product.category}</b>
-                    </>
-                  ) : null}
-                </div>
+                {/* NEW: show ALL categories as chips, not just one */}
+                {allCats.length > 0 && (
+                  <div className="mb-3 d-flex flex-wrap" style={{ gap: 8 }}>
+                    {allCats.map((c) => {
+                      const slug = String(c).toLowerCase();
+                      const label = CAT_LABELS[slug] || c;
+                      return (
+                        <span
+                          key={c}
+                          className="pd-chip"
+                          style={{
+                            border: "1px solid #eee",
+                            background: "#f8f9fa",
+                            fontWeight: 500,
+                          }}
+                          title={label}
+                        >
+                          {label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
 
                 <div className="mb-3">
                   {product?.stock ? (
@@ -273,12 +313,7 @@ function ProductDetailsPage({ history, match }) {
                 <div className="mb-3">
                   <div className="pd-subtle mb-2">Quantité</div>
                   <div className="pd-qty">
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={minus}
-                      aria-label="minus"
-                    >
+                    <button type="button" className="btn" onClick={minus} aria-label="minus">
                       &minus;
                     </button>
                     <input
@@ -289,12 +324,7 @@ function ProductDetailsPage({ history, match }) {
                           setQty(Math.max(1, Math.min(99, v)));
                       }}
                     />
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={plus}
-                      aria-label="plus"
-                    >
+                    <button type="button" className="btn" onClick={plus} aria-label="plus">
                       +
                     </button>
                   </div>
@@ -306,31 +336,20 @@ function ProductDetailsPage({ history, match }) {
                     onClick={addToCart}
                     disabled={!product?.stock}
                   >
-                    <i className="fas fa-shopping-bag mr-2" /> Ajouter au
-                    panier
+                    <i className="fas fa-shopping-bag mr-2" /> Ajouter au panier
                   </button>
-                  <button
-                    onClick={handleToggleWishlist}
-                    className="pd-btn-outline"
-                  >
-                    {inWishlist
-                      ? "💔 Retirer de ma wishlist"
-                      : "🤍 Ajouter à ma wishlist"}
+                  <button onClick={handleToggleWishlist} className="pd-btn-outline">
+                    {inWishlist ? "💔 Retirer de ma wishlist" : "🤍 Ajouter à ma wishlist"}
                   </button>
                   {userInfo && userInfo.admin && (
                     <>
                       <button
                         className="pd-btn-outline"
-                        onClick={() =>
-                          history.push(`/product-update/${product.id}/`)
-                        }
+                        onClick={() => history.push(`/product/${product.id}/`)}
                       >
                         Edit Product
                       </button>
-                      <button
-                        className="pd-btn-outline"
-                        onClick={() => setShow(true)}
-                      >
+                      <button className="pd-btn-outline" onClick={() => setShow(true)}>
                         Delete Product
                       </button>
                     </>
