@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Form, Button } from "react-bootstrap";
+import { Form, Button, InputGroup } from "react-bootstrap";
 import { useHistory } from "react-router-dom";
 import { createProduct } from "../actions/productActions";
 import { checkTokenValidation, logout } from "../actions/userActions";
@@ -8,11 +8,11 @@ import { CREATE_PRODUCT_RESET } from "../constants";
 import Message from "../components/Message";
 
 const CATEGORY_OPTIONS = [
-  { value: "face", label: "Face" },
-  { value: "lips", label: "Lips" },
-  { value: "eyes", label: "Eyes" },
-  { value: "eyebrow", label: "Eyebrow" },
-  { value: "hair", label: "Hair" },
+  { value: "face", label: "Visage" },
+  { value: "lips", label: "Lèvres" },
+  { value: "eyes", label: "Yeaux" },
+  { value: "eyebrow", label: "Sourcils" },
+  { value: "hair", label: "Cheveux" },
   { value: "body", label: "Corps" },
   { value: "packs", label: "Packs" },
   { value: "acne", label: "Acné" },
@@ -27,53 +27,102 @@ export default function ProductCreatePage() {
   const history = useHistory();
   const dispatch = useDispatch();
 
+  // Base fields
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
+  const [brand, setBrand] = useState("");
+
+  // Categories (multi)
+  const [categories, setCategories] = useState(["other"]);
+
+  // Prices
+  const [price, setPrice] = useState("");       // base price
+  const [discountPct, setDiscountPct] = useState(""); // helper
+  const [newPrice, setNewPrice] = useState(""); // promo price (optional)
+
+  // Stock + Image
   const [stock, setStock] = useState(false);
   const [image, setImage] = useState(null);
 
-  const [brand, setBrand] = useState("");
-  const [categories, setCategories] = useState(["other"]); // multi
-
+  // Variants
   const [variants, setVariants] = useState([
     { label: "", size_ml: "", price: "", in_stock: true, sku: "" },
   ]);
-
   const addVariantRow = () =>
     setVariants((v) => [...v, { label: "", size_ml: "", price: "", in_stock: true, sku: "" }]);
   const removeVariantRow = (idx) => setVariants((v) => v.filter((_, i) => i !== idx));
   const changeVariant = (idx, field, value) =>
     setVariants((v) => v.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
 
+  // Redux state
   const { userInfo } = useSelector((s) => s.userLoginReducer || {});
   const { product, success, error } = useSelector((s) => s.createProductReducer || {});
   const { error: tokenError } = useSelector((s) => s.checkTokenValidationReducer || {});
 
   useEffect(() => {
-    if (!userInfo) { history.push("/login"); return; }
+    if (!userInfo) {
+      history.push("/login");
+      return;
+    }
     dispatch(checkTokenValidation());
   }, [dispatch, userInfo, history]);
+
+  // ---- multi-category helpers
+  const isChecked = (val) => categories.includes(val);
+  const toggleCategory = (val) => {
+    setCategories((prev) => {
+      if (prev.includes(val)) {
+        const next = prev.filter((x) => x !== val);
+        return next.length ? next : ["other"];
+      } else {
+        const next = [...prev, val];
+        if (next[0] === "other" && val !== "other") {
+          return [val, ...next.filter((x) => x !== "other")];
+        }
+        return next;
+      }
+    });
+  };
+  const makePrimary = (val) => {
+    setCategories((prev) => {
+      const list = prev.includes(val) ? prev : [...prev, val];
+      return [val, ...list.filter((x) => x !== val)];
+    });
+  };
+
+  // helper: percent -> new price
+  const norm = (x) => (x == null ? "" : String(x).replace(",", "."));
+  const applyPercent = () => {
+    const base = parseFloat(norm(price));
+    const pct = parseFloat(norm(discountPct));
+    if (!isFinite(base) || !isFinite(pct) || base <= 0 || pct <= 0) return;
+    setNewPrice(String(+(base * (100 - pct) / 100).toFixed(2)));
+  };
 
   const onSubmit = (e) => {
     e.preventDefault();
     const fd = new FormData();
     fd.append("name", name);
     fd.append("description", description);
-    fd.append("price", price);
+    fd.append("brand", brand);
     fd.append("stock", stock ? "true" : "false");
     if (image) fd.append("image", image);
-    fd.append("brand", brand);
-    // send both for compatibility
+
+    // prices
+    fd.append("price", norm(price));
+    fd.append("new_price", newPrice === "" ? "" : norm(newPrice)); // empty means no promo
+
+    // categories (keep both for compatibility)
     fd.append("category", categories[0] || "other");
     fd.append("categories", JSON.stringify(categories));
 
+    // variants
     const clean = variants
       .filter((v) => v.label && String(v.price) !== "")
       .map((v) => ({
         label: v.label,
-        size_ml: v.size_ml === "" ? null : Number(v.size_ml),
-        price: Number(v.price),
+        size_ml: v.size_ml === "" ? null : Number(norm(v.size_ml)),
+        price: Number(norm(v.price)),
         in_stock: !!v.in_stock,
         sku: v.sku || "",
       }));
@@ -82,6 +131,7 @@ export default function ProductCreatePage() {
     dispatch(createProduct(fd));
   };
 
+  // redirect after success
   useEffect(() => {
     if (!success) return;
     const newId = product?.id ?? product?.product?.id ?? product?.product_id ?? null;
@@ -90,6 +140,7 @@ export default function ProductCreatePage() {
     dispatch({ type: CREATE_PRODUCT_RESET });
   }, [success, product, history, dispatch]);
 
+  // session expired guard
   useEffect(() => {
     if (userInfo && tokenError === "Request failed with status code 401") {
       alert("Session expired, please login again.");
@@ -99,76 +150,150 @@ export default function ProductCreatePage() {
     }
   }, [userInfo, tokenError, dispatch, history]);
 
-  const onChangeCategories = (e) => {
-    const values = Array.from(e.target.selectedOptions).map((o) => o.value);
-    setCategories(values.length ? values : ["other"]);
-  };
-
   return (
     <div>
-      {error && <Message variant="danger">{error.image ? error.image[0] : String(error)}</Message>}
+      {error && (
+        <Message variant="danger">
+          {error.image ? error.image[0] : String(error)}
+        </Message>
+      )}
 
-      <span className="d-flex justify-content-center text-info"><em>New Product</em></span>
+      <span className="d-flex justify-content-center text-info">
+        <em>New Product</em>
+      </span>
 
       <Form onSubmit={onSubmit}>
         <Form.Group controlId="name">
           <Form.Label><b>Product Name</b></Form.Label>
-          <Form.Control required autoFocus value={name} placeholder="product name" onChange={(e) => setName(e.target.value)} />
+          <Form.Control required autoFocus value={name} placeholder="product name"
+                        onChange={(e) => setName(e.target.value)} />
         </Form.Group>
 
         <Form.Group controlId="description">
           <Form.Label><b>Product Description</b></Form.Label>
-          <Form.Control required value={description} placeholder="product description" onChange={(e) => setDescription(e.target.value)} />
+          <Form.Control required value={description} placeholder="product description"
+                        onChange={(e) => setDescription(e.target.value)} />
         </Form.Group>
 
         <Form.Group controlId="brand">
           <Form.Label><b>Brand (Marque)</b></Form.Label>
-          <Form.Control value={brand} placeholder="Ex. The Ordinary" onChange={(e) => setBrand(e.target.value)} />
+          <Form.Control value={brand} placeholder="Ex. The Ordinary"
+                        onChange={(e) => setBrand(e.target.value)} />
         </Form.Group>
 
-        {/* MULTI CATEGORIES */}
+        {/* ====== Multi categories (checkboxes + primary) ====== */}
         <Form.Group controlId="categories">
-          <Form.Label><b>Categories (select one or more)</b></Form.Label>
-          <Form.Control as="select" multiple value={categories} onChange={onChangeCategories} style={{ minHeight: 160 }}>
-            {CATEGORY_OPTIONS.map((c) => (
-              <option key={c.value} value={c.value}>{c.label}</option>
-            ))}
-          </Form.Control>
-          <small className="text-muted">The first selection will be used as the primary category.</small>
+          <Form.Label><b>Categories</b></Form.Label>
+          <details style={{ border: '1px solid #eee', borderRadius: 8, padding: 12 }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+              Click to choose (you can select many)
+            </summary>
+
+            <div className="mt-3"
+                 style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+              {CATEGORY_OPTIONS.map((opt) => (
+                <div key={opt.value}
+                     className="d-flex align-items-center justify-content-between"
+                     style={{ border: '1px solid #eee', borderRadius: 8, padding: '8px 10px' }}>
+                  <Form.Check
+                    type="checkbox"
+                    id={`cat_${opt.value}`}
+                    label={opt.label}
+                    checked={isChecked(opt.value)}
+                    onChange={() => toggleCategory(opt.value)}
+                  />
+                  <Button
+                    size="sm"
+                    variant={categories[0] === opt.value ? 'success' : 'outline-secondary'}
+                    onClick={() => makePrimary(opt.value)}
+                    disabled={!isChecked(opt.value)}
+                    title="Set as primary"
+                  >
+                    {categories[0] === opt.value ? 'Primary' : 'Make primary'}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </details>
+          <small className="text-muted d-block mt-2">
+            The first selected category is used as the <b>primary</b>.
+          </small>
         </Form.Group>
 
+        {/* Prices */}
         <Form.Group controlId="price">
-          <Form.Label><b>Price (base)</b></Form.Label>
-          <Form.Control required type="number" step="0.01" maxLength="8" value={price} placeholder="199.99" onChange={(e) => setPrice(e.target.value)} />
+          <Form.Label><b>Base price</b></Form.Label>
+          <Form.Control type="text" value={price} placeholder="ex. 199,00"
+                        onChange={(e) => setPrice(e.target.value)} />
         </Form.Group>
 
+        <Form.Group controlId="discountPct">
+          <Form.Label><b>Discount % (helper)</b></Form.Label>
+          <InputGroup>
+            <Form.Control type="number" step="1" min="1" max="95"
+                          value={discountPct} placeholder="ex. 22"
+                          onChange={(e) => setDiscountPct(e.target.value)} />
+            <InputGroup.Append>
+              <Button variant="outline-secondary" onClick={applyPercent}>
+                Apply to New price
+              </Button>
+            </InputGroup.Append>
+          </InputGroup>
+          <small className="text-muted">Calculé à partir du <b>Base price</b>.</small>
+        </Form.Group>
+
+        <Form.Group controlId="new_price">
+          <Form.Label><b>New price (promotion)</b></Form.Label>
+          <Form.Control type="text" value={newPrice}
+                        placeholder="ex. 155,00 (vide = pas de promo)"
+                        onChange={(e) => setNewPrice(e.target.value)} />
+        </Form.Group>
+
+        {/* Stock */}
         <div className="d-flex align-items-center mb-3">
           <Form.Label className="mb-0">In Stock</Form.Label>
-          <Form.Check className="ml-2" type="checkbox" checked={stock} onChange={() => setStock(!stock)} />
+          <Form.Check className="ml-2" type="checkbox" checked={stock}
+                      onChange={() => setStock(!stock)} />
         </div>
 
+        {/* Image */}
         <Form.Group controlId="image">
           <Form.Label><b>Product Image</b></Form.Label>
           <Form.Control type="file" onChange={(e) => setImage(e.target.files[0])} />
         </Form.Group>
 
+        {/* Variants */}
         <Form.Group>
           <Form.Label><b>Sizes / Variants (optional)</b></Form.Label>
           {variants.map((row, i) => (
             <div key={i} className="d-flex align-items-center mb-2" style={{ gap: 8 }}>
-              <Form.Control style={{ maxWidth: 240 }} placeholder="Label (e.g. 500 ml)" value={row.label} onChange={(e) => changeVariant(i, "label", e.target.value)} />
-              <Form.Control type="number" style={{ maxWidth: 120 }} placeholder="Size ml (opt.)" value={row.size_ml} onChange={(e) => changeVariant(i, "size_ml", e.target.value)} />
-              <Form.Control type="number" step="0.01" style={{ maxWidth: 140 }} placeholder="Price" value={row.price} onChange={(e) => changeVariant(i, "price", e.target.value)} />
-              <Form.Check className="ml-2" label="In stock" checked={row.in_stock} onChange={(e) => changeVariant(i, "in_stock", e.target.checked)} />
-              <Form.Control style={{ maxWidth: 140 }} placeholder="SKU (opt.)" value={row.sku} onChange={(e) => changeVariant(i, "sku", e.target.value)} />
-              <Button variant="outline-danger" size="sm" className="ml-2" onClick={() => removeVariantRow(i)}>Remove</Button>
+              <Form.Control style={{ maxWidth: 240 }} placeholder="Label (e.g. 500 ml)"
+                            value={row.label} onChange={(e) => changeVariant(i, "label", e.target.value)} />
+              <Form.Control type="number" style={{ maxWidth: 120 }} placeholder="Size ml (opt.)"
+                            value={row.size_ml} onChange={(e) => changeVariant(i, "size_ml", e.target.value)} />
+              <Form.Control type="number" step="0.01" style={{ maxWidth: 140 }} placeholder="Price"
+                            value={row.price} onChange={(e) => changeVariant(i, "price", e.target.value)} />
+              <Form.Check className="ml-2" label="In stock" checked={row.in_stock}
+                          onChange={(e) => changeVariant(i, "in_stock", e.target.checked)} />
+              <Form.Control style={{ maxWidth: 140 }} placeholder="SKU (opt.)"
+                            value={row.sku} onChange={(e) => changeVariant(i, "sku", e.target.value)} />
+              <Button variant="outline-danger" size="sm" className="ml-2" onClick={() => removeVariantRow(i)}>
+                Remove
+              </Button>
             </div>
           ))}
-          <Button variant="outline-secondary" size="sm" className="mt-2" onClick={addVariantRow}>+ Add size</Button>
+          <Button variant="outline-secondary" size="sm" className="mt-2" onClick={addVariantRow}>
+            + Add size
+          </Button>
         </Form.Group>
 
-        <Button type="submit" variant="success" className="btn-sm button-focus-css">Save Product</Button>
-        <Button type="button" variant="primary" className="btn-sm ml-2 button-focus-css" onClick={() => history.push("/")}>Cancel</Button>
+        <Button type="submit" variant="success" className="btn-sm button-focus-css">
+          Save Product
+        </Button>
+        <Button type="button" variant="primary" className="btn-sm ml-2 button-focus-css"
+                onClick={() => history.push("/")}>
+          Cancel
+        </Button>
       </Form>
     </div>
   );
