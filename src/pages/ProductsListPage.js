@@ -25,28 +25,34 @@ export default function ProductsListPage() {
   const [error, setError]     = useState(null);
   const [items, setItems]     = useState([]);
 
-  const [q, setQ]       = useState("");
-  const [cat, setCat]   = useState("");
+  const [q, setQ]         = useState("");
+  const [cat, setCat]     = useState("");
   const [brand, setBrand] = useState("");
 
+  // ------- Read query string (brand, category/type, search or searchTerm) ------
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     const b = p.get("brand") || "";
     const c = p.get("category") || p.get("type") || "";
+    const s = p.get("search") || p.get("searchTerm") || "";
     setBrand(b);
     setCat(c);
+    setQ(s);
   }, []);
+  // -----------------------------------------------------------------------------
 
-  const filtered = useMemo(() => {
-    const s = (q || "").trim().toLowerCase();
-    return items.filter(p => {
-      const okCat = !cat || (p.category || "").toLowerCase() === cat;
-      if (!s) return okCat;
-      const hay = `${p.name || ""} ${p.description || ""}`.toLowerCase();
-      return okCat && hay.includes(s);
-    });
-  }, [items, q, cat]);
+  // Keep URL in sync as user types (so you can share/refresh)
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (brand) p.set("brand", brand);
+    if (cat)   p.set("type", cat); // keep using ?type= for category
+    if (q)     p.set("search", q);
+    const qs = p.toString();
+    const url = qs ? `/products?${qs}` : "/products";
+    window.history.replaceState(null, "", url);
+  }, [brand, cat, q]);
 
+  // Server fetch; let backend prefilter by brand/category/search
   useEffect(() => {
     let alive = true;
     setLoading(true);
@@ -54,8 +60,9 @@ export default function ProductsListPage() {
     (async () => {
       try {
         const params = {};
-        if (cat)   params.type  = cat;
-        if (brand) params.brand = brand;
+        if (cat)   params.type   = cat;      // backend supports ?type=
+        if (brand) params.brand  = brand;    // backend supports ?brand=
+        if (q)     params.search = q;        // backend supports ?search=
         const { data } = await api.get("/products/", { params });
         if (!alive) return;
         setItems(Array.isArray(data) ? data : []);
@@ -67,7 +74,18 @@ export default function ProductsListPage() {
       }
     })();
     return () => { alive = false; };
-  }, [cat, brand]);
+  }, [cat, brand, q]);
+
+  // Client-side final filter: enforce **name-only** contains
+  const filtered = useMemo(() => {
+    const s = (q || "").trim().toLowerCase();
+    return items.filter(p => {
+      const okCat = !cat || (p.category || "").toLowerCase() === cat;
+      if (!s) return okCat;
+      const name = (p.name || "").toLowerCase();
+      return okCat && name.includes(s); // name-only filter
+    });
+  }, [items, q, cat]);
 
   return (
     <Container className="py-5">
@@ -77,7 +95,7 @@ export default function ProductsListPage() {
         </Col>
         <Col md="6">
           <Form.Control
-            placeholder="Rechercher un produit..."
+            placeholder="Rechercher un produit (par nom)…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -129,5 +147,4 @@ export default function ProductsListPage() {
     </Container>
   );
 }
-
 
