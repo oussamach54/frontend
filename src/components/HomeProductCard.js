@@ -15,12 +15,7 @@ const CAT_LABELS = {
   eyebrow: "SOURCILS",
   hair: "CHEVEUX",
   body: "CORPS",
-  packs: "PACKS",
-  acne: "ACNÉ",
-  hyper_pigmentation: "HYPER PIGMENTATION",
-  brightening: "ÉCLAIRCISSEMENT",
-  dry_skin: "PEAU SÈCHE",
-  combination_oily: "PEAU MIXTE/GRASSE",
+
   other: "AUTRES",
 };
 
