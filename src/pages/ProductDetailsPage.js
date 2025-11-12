@@ -53,10 +53,7 @@ function ProductDetailsPage({ history, match }) {
     if (!variants.length) return;
     if (hasDiscount && promoVariantId && variantId == null) {
       const pv = variants.find((v) => String(v.id) === String(promoVariantId));
-      if (pv) {
-        setVariantId(pv.id);
-        return;
-      }
+      if (pv) { setVariantId(pv.id); return; }
     }
     if (variantId == null) {
       const firstOk = variants.find((v) => v.in_stock) || variants[0];
@@ -67,27 +64,20 @@ function ProductDetailsPage({ history, match }) {
   // compute unit price
   const unitPrice = (() => {
     if (activeVariant) {
-      if (
-        hasDiscount &&
-        String(activeVariant.id) === String(promoVariantId)
-      ) {
+      if (hasDiscount && String(activeVariant.id) === String(promoVariantId)) {
         return Number(product?.promo_variant_new_price || activeVariant.price);
       }
       return Number(activeVariant.price || 0);
     }
-    if (hasDiscount) {
-      return Number(product?.new_price || product?.price || 0);
-    }
+    if (hasDiscount) return Number(product?.new_price || product?.price || 0);
     return Number(product?.price || 0);
   })();
 
   const total = unitPrice * qty;
 
   const fmtMAD = (v) =>
-    new Intl.NumberFormat("fr-MA", {
-      style: "currency",
-      currency: "MAD",
-    }).format(Number(v || 0));
+    new Intl.NumberFormat("fr-MA", { style: "currency", currency: "MAD" })
+      .format(Number(v || 0));
 
   const plus = () => setQty((q) => Math.min(99, q + 1));
   const minus = () => setQty((q) => Math.max(1, q - 1));
@@ -151,9 +141,7 @@ function ProductDetailsPage({ history, match }) {
       {loading && (
         <span style={{ display: "flex" }}>
           <h5>Getting Product Details</h5>
-          <span className="ml-2">
-            <Spinner animation="border" />
-          </span>
+          <span className="ml-2"><Spinner animation="border" /></span>
         </span>
       )}
 
@@ -165,16 +153,10 @@ function ProductDetailsPage({ history, match }) {
             <Col lg={6}>
               <div className="pd-media">
                 <div className="pd-media-frame">
-                  <img
-                    src={productImage(product)}
-                    alt={product?.name}
-                  />
-                  {hasDiscount &&
-                    String(variantId) === String(promoVariantId) && (
-                      <span className="pd-sale-badge pd-sale-badge--media">
-                        -{percent}%
-                      </span>
-                    )}
+                  <img src={productImage(product)} alt={product?.name} />
+                  {hasDiscount && String(variantId) === String(promoVariantId) && (
+                    <span className="pd-sale-badge pd-sale-badge--media">-{percent}%</span>
+                  )}
                 </div>
               </div>
             </Col>
@@ -184,11 +166,7 @@ function ProductDetailsPage({ history, match }) {
                 <h2 className="pd-title">{product?.name}</h2>
 
                 <div className="pd-subtle mb-3">
-                  {product?.category ? (
-                    <>
-                      Catégorie : <b>{product.category}</b>
-                    </>
-                  ) : null}
+                  {product?.category ? <>Catégorie : <b>{product.category}</b></> : null}
                 </div>
 
                 <div className="mb-3">
@@ -204,9 +182,7 @@ function ProductDetailsPage({ history, match }) {
                 </div>
 
                 {product?.description && (
-                  <p className="pd-subtle" style={{ lineHeight: 1.7 }}>
-                    {product.description}
-                  </p>
+                  <p className="pd-subtle" style={{ lineHeight: 1.7 }}>{product.description}</p>
                 )}
 
                 {variants.length > 0 && (
@@ -217,23 +193,16 @@ function ProductDetailsPage({ history, match }) {
                         <button
                           key={v.id}
                           type="button"
-                          className={`pd-variant-pill${
-                            String(variantId) === String(v.id)
-                              ? " is-active"
-                              : ""
-                          }`}
+                          className={`pd-variant-pill${String(variantId) === String(v.id) ? " is-active" : ""}`}
                           disabled={!v.in_stock}
                           onClick={() => setVariantId(v.id)}
                           title={!v.in_stock ? "Indisponible" : v.label}
                           data-price={fmtMAD(v.price)}
                         >
                           {v.label}
-                          {hasDiscount &&
-                            String(v.id) === String(promoVariantId) && (
-                              <span className="ml-2 small text-danger font-weight-bold">
-                                −{percent}%
-                              </span>
-                            )}
+                          {hasDiscount && String(v.id) === String(promoVariantId) && (
+                            <span className="ml-2 small text-danger font-weight-bold">−{percent}%</span>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -245,101 +214,60 @@ function ProductDetailsPage({ history, match }) {
                 <div className="pd-price mb-3">
                   <span className="pd-subtle">Prix</span>
                   <div className="pd-price-wrap">
-                    {hasDiscount &&
-                    activeVariant &&
-                    String(activeVariant.id) === String(promoVariantId) ? (
+                    {hasDiscount && activeVariant && String(activeVariant.id) === String(promoVariantId) ? (
                       <>
-                        <span className="pd-price-old">
-                          {fmtMAD(product.promo_variant_old_price)}
-                        </span>
+                        <span className="pd-price-old">{fmtMAD(product.promo_variant_old_price)}</span>
                         <span className="pd-sale-badge">-{percent}%</span>
-                        <strong className="pd-price-new">
-                          {fmtMAD(product.promo_variant_new_price)}
-                        </strong>
+                        <strong className="pd-price-new">{fmtMAD(product.promo_variant_new_price)}</strong>
                       </>
                     ) : (
-                      <strong className="pd-price-new">
-                        {fmtMAD(unitPrice)}
-                      </strong>
+                      <strong className="pd-price-new">{fmtMAD(unitPrice)}</strong>
                     )}
                   </div>
                   {activeVariant && (
-                    <div className="pd-subtle small mt-1">
-                      Variante : {activeVariant.label}
-                    </div>
+                    <div className="pd-subtle small mt-1">Variante : {activeVariant.label}</div>
                   )}
                 </div>
 
                 <div className="mb-3">
                   <div className="pd-subtle mb-2">Quantité</div>
                   <div className="pd-qty">
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={minus}
-                      aria-label="minus"
-                    >
-                      &minus;
-                    </button>
+                    <button type="button" className="btn" onClick={minus} aria-label="minus">&minus;</button>
                     <input
                       value={qty}
                       onChange={(e) => {
                         const v = Number(e.target.value);
-                        if (!Number.isNaN(v))
-                          setQty(Math.max(1, Math.min(99, v)));
+                        if (!Number.isNaN(v)) setQty(Math.max(1, Math.min(99, v)));
                       }}
                     />
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={plus}
-                      aria-label="plus"
-                    >
-                      +
-                    </button>
+                    <button type="button" className="btn" onClick={plus} aria-label="plus">+</button>
                   </div>
                 </div>
 
                 <div className="pd-actions mb-2">
-                  <button
-                    className="pd-btn-primary"
-                    onClick={addToCart}
-                    disabled={!product?.stock}
-                  >
-                    <i className="fas fa-shopping-bag mr-2" /> Ajouter au
-                    panier
+                  <button className="pd-btn-primary" onClick={addToCart} disabled={!product?.stock}>
+                    <i className="fas fa-shopping-bag mr-2" /> Ajouter au panier
                   </button>
-                  <button
-                    onClick={handleToggleWishlist}
-                    className="pd-btn-outline"
-                  >
-                    {inWishlist
-                      ? "💔 Retirer de ma wishlist"
-                      : "🤍 Ajouter à ma wishlist"}
+                  <button onClick={handleToggleWishlist} className="pd-btn-outline">
+                    {inWishlist ? "💔 Retirer de ma wishlist" : "🤍 Ajouter à ma wishlist"}
                   </button>
                   {userInfo && userInfo.admin && (
                     <>
+                      {/* ✅ FIX: send to the update page */}
                       <button
                         className="pd-btn-outline"
-                        onClick={() =>
-                          history.push(`/product-update/${product.id}/`)
-                        }
+                        onClick={() => history.push(`/product-update/${product.id}/`)}
                       >
                         Edit Product
                       </button>
-                      <button
-                        className="pd-btn-outline"
-                        onClick={() => setShow(true)}
-                      >
+                      <button className="pd-btn-outline" onClick={() => setShow(true)}>
                         Delete Product
                       </button>
                     </>
                   )}
                 </div>
 
-                <div className="pd-total">
-                  Total estimé : <b>{fmtMAD(total)}</b>
-                </div>
+                <div className="pd-total">Total estimé : <b>{fmtMAD(total)}</b></div>
               </div>
             </Col>
           </Row>
@@ -350,3 +278,4 @@ function ProductDetailsPage({ history, match }) {
 }
 
 export default ProductDetailsPage;
+
