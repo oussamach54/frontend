@@ -1,156 +1,273 @@
-// src/pages/ProductsListPage.js
 import React, { useEffect, useMemo, useState } from "react";
-import { Container, Row, Col, Spinner, Alert, Form } from "react-bootstrap";
-import api from "../api";
-import HomeProductCard from "../components/HomeProductCard";
-import "../components/HomeProducts.css";
+import { useDispatch, useSelector } from "react-redux";
+import { Spinner, Row, Col, Container, Button, Modal } from "react-bootstrap";
+import Message from "../components/Message";
+import { deleteProduct, getProductDetails } from "../actions/productActions";
+import { toggleWishlist } from "../actions/wishlistActions";
+import { useCart } from "../cart/CartProvider";
+import {
+  CREATE_PRODUCT_RESET,
+  DELETE_PRODUCT_RESET,
+  UPDATE_PRODUCT_RESET,
+  CARD_CREATE_RESET,
+} from "../constants";
+import { productImage } from "../utils/media";
 
-const CATS = [
-  { key: "face",               label: "VISAGE" },
-  { key: "lips",               label: "LÈVRES" },
-  { key: "eyes",               label: "YEUX" },
-  { key: "eyebrow",            label: "SOURCILS" },
-  { key: "hair",               label: "CHEVEUX" },
-  // NEW:
-  { key: "body",               label: "CORPS" },
-  { key: "packs",              label: "PACKS" },
-  { key: "acne",               label: "ACNÉ" },
-  { key: "hyper_pigmentation", label: "HYPER PIGMENTATION" },
-  { key: "brightening",        label: "ÉCLAIRCISSEMENT" },
-  { key: "dry_skin",           label: "PEAU SÈCHE" },
-  { key: "combination_oily",   label: "PEAU MIXTE/GRASSE" },
-];
+function ProductDetailsPage({ history, match }) {
+  const dispatch = useDispatch();
+  const cart = useCart();
 
-export default function ProductsListPage() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
-  const [items, setItems]     = useState([]);
+  const [show, setShow] = useState(false);
+  const [qty, setQty] = useState(1);
+  const [variantId, setVariantId] = useState(null);
 
-  const [q, setQ]             = useState("");
-  const [cat, setCat]         = useState("");
-  const [brand, setBrand]     = useState("");
+  const { loading, error, product } =
+    useSelector((s) => s.productDetailsReducer) || {};
+  const { userInfo } = useSelector((s) => s.userLoginReducer) || {};
+  const { success: productDeletionSuccess } =
+    useSelector((s) => s.deleteProductReducer) || {};
+  const { items: wishlistItems = [] } = useSelector((s) => s.wishlist || {});
 
-  // Read query string once on mount (?brand=..., ?category=... or ?type=...)
+  const pid = product?.id;
+  const inWishlist = pid
+    ? wishlistItems.some((w) => (w.product?.id ?? w.id ?? w._id) === pid)
+    : false;
+
+  const variants = useMemo(
+    () => (Array.isArray(product?.variants) ? product.variants : []),
+    [product?.variants]
+  );
+
+  const activeVariant = useMemo(
+    () => variants.find((v) => String(v.id) === String(variantId)) || null,
+    [variants, variantId]
+  );
+
+  // promo on biggest variant (backend)
+  const promoVariantId = product?.promo_variant_id || null;
+  const hasDiscount = !!product?.has_discount && !!promoVariantId;
+  const percent = Number(product?.discount_percent || 0);
+
+  // auto-select variant
   useEffect(() => {
-    const p = new URLSearchParams(window.location.search);
-    const b = p.get("brand") || "";
-    const c = p.get("category") || p.get("type") || "";
-    setBrand(b);
-    setCat(c);
-  }, []);
+    if (!variants.length) return;
+    if (hasDiscount && promoVariantId && variantId == null) {
+      const pv = variants.find((v) => String(v.id) === String(promoVariantId));
+      if (pv) { setVariantId(pv.id); return; }
+    }
+    if (variantId == null) {
+      const firstOk = variants.find((v) => v.in_stock) || variants[0];
+      setVariantId(firstOk?.id ?? null);
+    }
+  }, [variants, hasDiscount, promoVariantId, variantId]);
 
-  // local filtering for the search box
-  const filtered = useMemo(() => {
-    const s = (q || "").trim().toLowerCase();
-
-    return items.filter((p) => {
-      const cats = Array.isArray(p.categories) ? p.categories : [];
-      const primary = (p.category || "").toLowerCase();
-
-      // is product in selected category?
-      const okCat =
-        !cat ||
-        primary === cat ||
-        cats.map(String).map((x) => x.toLowerCase()).includes(cat);
-
-      if (!s) return okCat;
-
-      const hay = `${p.name || ""} ${p.description || ""}`.toLowerCase();
-      return okCat && hay.includes(s);
-    });
-  }, [items, q, cat]);
-
-  // fetch from API when cat or brand change
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    setError(null);
-
-    (async () => {
-      try {
-        const params = {};
-        if (cat)   params.type  = cat;   // server understands ?type= (and you already added support)
-        if (brand) params.brand = brand; // exact brand match
-        const { data } = await api.get("/products/", { params });
-        if (!alive) return;
-        setItems(Array.isArray(data) ? data : []);
-      } catch (e) {
-        if (!alive) return;
-        setError(e?.response?.data?.detail || e.message);
-      } finally {
-        if (alive) setLoading(false);
+  // compute unit price
+  const unitPrice = (() => {
+    if (activeVariant) {
+      if (hasDiscount && String(activeVariant.id) === String(promoVariantId)) {
+        return Number(product?.promo_variant_new_price || activeVariant.price);
       }
-    })();
+      return Number(activeVariant.price || 0);
+    }
+    if (hasDiscount) return Number(product?.new_price || product?.price || 0);
+    return Number(product?.price || 0);
+  })();
 
-    return () => { alive = false; };
-  }, [cat, brand]);
+  const total = unitPrice * qty;
+
+  const fmtMAD = (v) =>
+    new Intl.NumberFormat("fr-MA", { style: "currency", currency: "MAD" })
+      .format(Number(v || 0));
+
+  const plus = () => setQty((q) => Math.min(99, q + 1));
+  const minus = () => setQty((q) => Math.max(1, q - 1));
+
+  const handleToggleWishlist = () => pid && dispatch(toggleWishlist(pid));
+
+  const addToCart = () => {
+    if (!pid) return;
+    cart.addItem(
+      {
+        id: pid,
+        name: product?.name,
+        price: unitPrice,
+        image: productImage(product),
+        variantId: activeVariant ? activeVariant.id : null,
+        variantLabel: activeVariant ? activeVariant.label : "",
+      },
+      qty
+    );
+    cart.setOpen(true);
+  };
+
+  useEffect(() => {
+    dispatch(getProductDetails(match.params.id));
+    dispatch({ type: UPDATE_PRODUCT_RESET });
+    dispatch({ type: CREATE_PRODUCT_RESET });
+    dispatch({ type: CARD_CREATE_RESET });
+  }, [dispatch, match.params.id]);
+
+  if (productDeletionSuccess) {
+    alert("Product successfully deleted.");
+    history.push("/");
+    dispatch({ type: DELETE_PRODUCT_RESET });
+  }
 
   return (
-    <Container className="py-5">
-      <Row className="align-items-center mb-3">
-        <Col>
-          <h2 className="m-0 font-display fw-700">Tous les produits</h2>
-        </Col>
-        <Col md="6">
-          <Form.Control
-            placeholder="Rechercher un produit..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </Col>
-      </Row>
-
-      <div className="mb-2">
-        {brand ? (
-          <small className="text-muted">
-            Marque sélectionnée : <b>{brand}</b>
-          </small>
-        ) : null}
-      </div>
-
-      <div className="mb-3 d-flex flex-wrap gap-2">
-        <button
-          type="button"
-          className={`hp-tab ${cat === "" ? "is-active" : ""}`}
-          onClick={() => setCat("")}
-        >
-          Tous
-        </button>
-
-        {CATS.map(({ key, label }) => (
-          <button
-            key={key}
-            type="button"
-            className={`hp-tab ${cat === key ? "is-active" : ""}`}
-            onClick={() => setCat(key)}
+    <div>
+      <Modal show={show} onHide={() => setShow(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Delete Confirmation</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to delete <em>"{product?.name}"</em>?
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="danger"
+            onClick={() => {
+              dispatch(deleteProduct(match.params.id));
+              setShow(false);
+            }}
           >
-            {label}
-          </button>
-        ))}
-      </div>
+            Confirm Delete
+          </Button>
+          <Button variant="primary" onClick={() => setShow(false)}>
+            Cancel
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {loading && (
-        <div className="d-flex justify-content-center py-5">
-          <Spinner animation="border" />
-        </div>
+        <span style={{ display: "flex" }}>
+          <h5>Getting Product Details</h5>
+          <span className="ml-2"><Spinner animation="border" /></span>
+        </span>
       )}
-      {error && <Alert variant="danger">{error}</Alert>}
 
-      {!loading && !error && (
-        filtered.length ? (
-          <div className="hp-grid">
-            {filtered.map((p) => (
-              <HomeProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center text-muted py-5 font-sans">
-            Aucun produit à afficher.
-          </div>
-        )
+      {error ? (
+        <Message variant="danger">{error}</Message>
+      ) : (
+        <Container className="pd">
+          <Row className="gy-4">
+            <Col lg={6}>
+              <div className="pd-media">
+                <div className="pd-media-frame">
+                  <img src={productImage(product)} alt={product?.name} />
+                  {hasDiscount && String(variantId) === String(promoVariantId) && (
+                    <span className="pd-sale-badge pd-sale-badge--media">-{percent}%</span>
+                  )}
+                </div>
+              </div>
+            </Col>
+
+            <Col lg={6}>
+              <div className="pd-card mb-3">
+                <h2 className="pd-title">{product?.name}</h2>
+
+                <div className="pd-subtle mb-3">
+                  {product?.category ? <>Catégorie : <b>{product.category}</b></> : null}
+                </div>
+
+                <div className="mb-3">
+                  {product?.stock ? (
+                    <span className="pd-chip pd-chip--ok">
+                      <i className="fas fa-check-circle" /> En stock
+                    </span>
+                  ) : (
+                    <span className="pd-chip pd-chip--ko">
+                      <i className="fas fa-times-circle" /> Out of stock
+                    </span>
+                  )}
+                </div>
+
+                {product?.description && (
+                  <p className="pd-subtle" style={{ lineHeight: 1.7 }}>{product.description}</p>
+                )}
+
+                {variants.length > 0 && (
+                  <div className="mb-3">
+                    <div className="pd-subtle mb-2">Taille / Format</div>
+                    <div className="pd-variants">
+                      {variants.map((v) => (
+                        <button
+                          key={v.id}
+                          type="button"
+                          className={`pd-variant-pill${String(variantId) === String(v.id) ? " is-active" : ""}`}
+                          disabled={!v.in_stock}
+                          onClick={() => setVariantId(v.id)}
+                          title={!v.in_stock ? "Indisponible" : v.label}
+                          data-price={fmtMAD(v.price)}
+                        >
+                          {v.label}
+                          {hasDiscount && String(v.id) === String(promoVariantId) && (
+                            <span className="ml-2 small text-danger font-weight-bold">−{percent}%</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="pd-card">
+                <div className="pd-price mb-3">
+                  <span className="pd-subtle">Prix</span>
+                  <div className="pd-price-wrap">
+                    {hasDiscount && activeVariant && String(activeVariant.id) === String(promoVariantId) ? (
+                      <>
+                        <span className="pd-price-old">{fmtMAD(product.promo_variant_old_price)}</span>
+                        <span className="pd-sale-badge">-{percent}%</span>
+                        <strong className="pd-price-new">{fmtMAD(product.promo_variant_new_price)}</strong>
+                      </>
+                    ) : (
+                      <strong className="pd-price-new">{fmtMAD(unitPrice)}</strong>
+                    )}
+                  </div>
+                  {activeVariant && (
+                    <div className="pd-subtle small mt-1">Variante : {activeVariant.label}</div>
+                  )}
+                </div>
+
+                <div className="mb-3">
+                  <div className="pd-subtle mb-2">Quantité</div>
+                  <div className="pd-qty">
+                    <button type="button" className="btn" onClick={minus} aria-label="minus">&minus;</button>
+                    <input
+                      value={qty}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        if (!Number.isNaN(v)) setQty(Math.max(1, Math.min(99, v)));
+                      }}
+                    />
+                    <button type="button" className="btn" onClick={plus} aria-label="plus">+</button>
+                  </div>
+                </div>
+
+                <div className="pd-actions mb-2">
+                  <button className="pd-btn-primary" onClick={addToCart} disabled={!product?.stock}>
+                    <i className="fas fa-shopping-bag mr-2" /> Ajouter au panier
+                  </button>
+                  <button onClick={handleToggleWishlist} className="pd-btn-outline">
+                    {inWishlist ? "💔 Retirer de ma wishlist" : "🤍 Ajouter à ma wishlist"}
+                  </button>
+                  {userInfo && userInfo.admin && (
+                    <>
+                      <button className="pd-btn-outline" onClick={() => history.push(`/product/${product.id}/`)}>Edit Product</button>
+                      <button className="pd-btn-outline" onClick={() => setShow(true)}>Delete Product</button>
+                    </>
+                  )}
+                </div>
+
+                <div className="pd-total">Total estimé : <b>{fmtMAD(total)}</b></div>
+              </div>
+            </Col>
+          </Row>
+        </Container>
       )}
-    </Container>
+    </div>
   );
 }
 
+export default ProductDetailsPage;
 
