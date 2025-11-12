@@ -1,4 +1,3 @@
-// src/components/NavBar.js
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Navbar, Nav, Container, NavDropdown } from 'react-bootstrap';
@@ -11,7 +10,7 @@ function NavBar() {
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
-    onScroll(); // initial
+    onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
@@ -44,7 +43,14 @@ function NavBar() {
                 <LinkContainer to="/products?type=eyes"><NavDropdown.Item>Yeux</NavDropdown.Item></LinkContainer>
                 <LinkContainer to="/products?type=eyebrow"><NavDropdown.Item>Sourcils</NavDropdown.Item></LinkContainer>
                 <LinkContainer to="/products?type=hair"><NavDropdown.Item>Cheveux</NavDropdown.Item></LinkContainer>
-             
+                <LinkContainer to="/products?type=body"><NavDropdown.Item>Corps</NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=packs"><NavDropdown.Item>Packs</NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=acne"><NavDropdown.Item>Acné</NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=hyper_pigmentation"><NavDropdown.Item>Hyper pigmentation</NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=brightening"><NavDropdown.Item>Éclaircissement</NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=dry_skin"><NavDropdown.Item>Peau sèche</NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=combination_oily"><NavDropdown.Item>Peau mixte/grasse</NavDropdown.Item></LinkContainer>
+                <LinkContainer to="/products?type=other"><NavDropdown.Item>Autres</NavDropdown.Item></LinkContainer>
               </NavDropdown>
 
               <LinkContainer to="/brands">
@@ -75,5 +81,4 @@ function NavBar() {
 }
 
 export default NavBar;
-
 
