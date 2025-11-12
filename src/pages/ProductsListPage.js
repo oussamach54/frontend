@@ -5,19 +5,12 @@ import HomeProductCard from "../components/HomeProductCard";
 import "../components/HomeProducts.css";
 
 const CATS = [
-  { key: "face", label: "VISAGE" },
-  { key: "lips", label: "LÈVRES" },
-  { key: "eyes", label: "YEUX" },
-  { key: "eyebrow", label: "SOURCILS" },
-  { key: "hair", label: "CHEVEUX" },
-  { key: "body", label: "CORPS" },
-  { key: "packs", label: "PACKS" },
-  { key: "acne", label: "ACNÉ" },
-  { key: "hyperpigmentation", label: "HYPER PIGMENTATION" },
-  { key: "lightening", label: "ÉCLAIRCISSEMENT" },
-  { key: "dry_skin", label: "PEAU SÈCHE" },
-  { key: "combination_oily_skin", label: "PEAU MIXTE/GRASSE" },
-  { key: "other", label: "AUTRES" }
+  { key: "face",    label: "VISAGE"  },
+  { key: "lips",    label: "LÈVRES"  },
+  { key: "eyes",    label: "YEUX"    },
+  { key: "eyebrow", label: "SOURCILS"},
+  { key: "hair",    label: "CHEVEUX" },
+  { key: "other",   label: "AUTRES"  },
 ];
 
 export default function ProductsListPage() {
@@ -130,4 +123,5 @@ export default function ProductsListPage() {
     </Container>
   );
 }
+
 
