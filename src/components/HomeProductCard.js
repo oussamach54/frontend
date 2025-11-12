@@ -14,8 +14,6 @@ const CAT_LABELS = {
   eyes: "YEUX",
   eyebrow: "SOURCILS",
   hair: "CHEVEUX",
-  body: "CORPS",
-
   other: "AUTRES",
 };
 
