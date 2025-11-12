@@ -163,18 +163,12 @@ export default function ProductUpdatePage({ match }) {
           <Form.Group controlId="category">
             <Form.Label><b>Category</b></Form.Label>
             <Form.Control as="select" value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="visage">Visage</option>
-            <option value="lèvres">Lèvres</option>
-            <option value="yeux">Yeux</option>
-            <option value="sourcils">Sourcils</option>
-            <option value="cheveux">Cheveux</option>
-            <option value="corps">Corps</option>
-            <option value="acné">Acné</option>
-            <option value="hyper_pigmentation">Hyper pigmentation</option>
-            <option value="brightening">Éclaircissement</option>
-            <option value="dry_skin">Peau sèche</option>
-            <option value="combination_oily">Peau mixte/grasse</option>
-            <option value="other">Other</option>
+              <option value="face">Face</option>
+              <option value="lips">Lips</option>
+              <option value="eyes">Eyes</option>
+              <option value="eyebrow">Eyebrow</option>
+              <option value="hair">Hair</option>
+              <option value="other">Other</option>
             </Form.Control>
           </Form.Group>
 
