@@ -5,12 +5,19 @@ import HomeProductCard from "../components/HomeProductCard";
 import "../components/HomeProducts.css";
 
 const CATS = [
-  { key: "face",    label: "VISAGE"  },
-  { key: "lips",    label: "LÈVRES"  },
-  { key: "eyes",    label: "YEUX"    },
-  { key: "eyebrow", label: "SOURCILS"},
-  { key: "hair",    label: "CHEVEUX" },
-  { key: "other",   label: "AUTRES"  },
+  { key: "face",              label: "VISAGE" },
+  { key: "lips",              label: "LÈVRES" },
+  { key: "eyes",              label: "YEUX" },
+  { key: "eyebrow",           label: "SOURCILS" },
+  { key: "hair",              label: "CHEVEUX" },
+  { key: "body",              label: "CORPS" },
+  { key: "packs",             label: "PACKS" },
+  { key: "acne",              label: "ACNÉ" },
+  { key: "hyper_pigmentation",label: "HYPER PIGMENTATION" },
+  { key: "brightening",       label: "ÉCLAIRCISSEMENT" },
+  { key: "dry_skin",          label: "PEAU SÈCHE" },
+  { key: "combination_oily",  label: "PEAU MIXTE/GRASSE" },
+  { key: "other",             label: "AUTRES" },
 ];
 
 export default function ProductsListPage() {
@@ -18,11 +25,10 @@ export default function ProductsListPage() {
   const [error, setError]     = useState(null);
   const [items, setItems]     = useState([]);
 
-  const [q, setQ]     = useState("");
-  const [cat, setCat] = useState("");
+  const [q, setQ]       = useState("");
+  const [cat, setCat]   = useState("");
   const [brand, setBrand] = useState("");
 
-  // read query string (?brand=..., ?category= or ?type=)
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     const b = p.get("brand") || "";
@@ -48,8 +54,8 @@ export default function ProductsListPage() {
     (async () => {
       try {
         const params = {};
-        if (cat)   params.type  = cat;    // backend supports ?type=category
-        if (brand) params.brand = brand;  // backend supports ?brand=
+        if (cat)   params.type  = cat;
+        if (brand) params.brand = brand;
         const { data } = await api.get("/products/", { params });
         if (!alive) return;
         setItems(Array.isArray(data) ? data : []);
