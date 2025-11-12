@@ -159,7 +159,7 @@ export default function ProductUpdatePage({ match }) {
             <Form.Control value={brand} onChange={(e) => setBrand(e.target.value)} />
           </Form.Group>
 
-          {/* Single category */}
+          {/* Single category with ALL options */}
           <Form.Group controlId="category">
             <Form.Label><b>Category</b></Form.Label>
             <Form.Control as="select" value={category} onChange={(e) => setCategory(e.target.value)}>
@@ -168,6 +168,13 @@ export default function ProductUpdatePage({ match }) {
               <option value="eyes">Eyes</option>
               <option value="eyebrow">Eyebrow</option>
               <option value="hair">Hair</option>
+              <option value="body">Corps</option>
+              <option value="packs">Packs</option>
+              <option value="acne">Acné</option>
+              <option value="hyper_pigmentation">Hyper pigmentation</option>
+              <option value="brightening">Éclaircissement</option>
+              <option value="dry_skin">Peau sèche</option>
+              <option value="combination_oily">Peau mixte/grasse</option>
               <option value="other">Other</option>
             </Form.Control>
           </Form.Group>
@@ -223,4 +230,3 @@ export default function ProductUpdatePage({ match }) {
     </div>
   );
 }
-
