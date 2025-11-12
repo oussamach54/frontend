@@ -5,31 +5,24 @@ import HomeProductCard from "../components/HomeProductCard";
 import "../components/HomeProducts.css";
 
 const CATS = [
-  { key: "face", label: "VISAGE" },
-  { key: "lips", label: "LÈVRES" },
-  { key: "eyes", label: "YEUX" },
-  { key: "eyebrow", label: "SOURCILS" },
-  { key: "hair", label: "CHEVEUX" },
-  // NEW:
-  { key: "body", label: "CORPS" },
-  { key: "packs", label: "PACKS" },
-  { key: "acne", label: "ACNÉ" },
-  { key: "hyper_pigmentation", label: "HYPER PIGMENTATION" },
-  { key: "brightening", label: "ÉCLAIRCISSEMENT" },
-  { key: "dry_skin", label: "PEAU SÈCHE" },
-  { key: "combination_oily", label: "PEAU MIXTE/GRASSE" },
+  { key: "face",    label: "VISAGE"  },
+  { key: "lips",    label: "LÈVRES"  },
+  { key: "eyes",    label: "YEUX"    },
+  { key: "eyebrow", label: "SOURCILS"},
+  { key: "hair",    label: "CHEVEUX" },
+  { key: "other",   label: "AUTRES"  },
 ];
 
 export default function ProductsListPage() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [items, setItems] = useState([]);
+  const [error, setError]     = useState(null);
+  const [items, setItems]     = useState([]);
 
-  const [q, setQ] = useState("");
+  const [q, setQ]     = useState("");
   const [cat, setCat] = useState("");
   const [brand, setBrand] = useState("");
 
-  // read query string (?brand=..., ?category=...)
+  // read query string (?brand=..., ?category= or ?type=)
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     const b = p.get("brand") || "";
@@ -40,8 +33,8 @@ export default function ProductsListPage() {
 
   const filtered = useMemo(() => {
     const s = (q || "").trim().toLowerCase();
-    return items.filter((p) => {
-      const okCat = !cat || (p.category || "").toLowerCase() === cat || (p.categories || []).includes(cat);
+    return items.filter(p => {
+      const okCat = !cat || (p.category || "").toLowerCase() === cat;
       if (!s) return okCat;
       const hay = `${p.name || ""} ${p.description || ""}`.toLowerCase();
       return okCat && hay.includes(s);
@@ -55,8 +48,8 @@ export default function ProductsListPage() {
     (async () => {
       try {
         const params = {};
-        if (cat) params.type = cat;
-        if (brand) params.brand = brand; // SERVER filters it now
+        if (cat)   params.type  = cat;    // backend supports ?type=category
+        if (brand) params.brand = brand;  // backend supports ?brand=
         const { data } = await api.get("/products/", { params });
         if (!alive) return;
         setItems(Array.isArray(data) ? data : []);
@@ -67,9 +60,7 @@ export default function ProductsListPage() {
         if (alive) setLoading(false);
       }
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [cat, brand]);
 
   return (
@@ -79,7 +70,11 @@ export default function ProductsListPage() {
           <h2 className="m-0 font-display fw-700">Tous les produits</h2>
         </Col>
         <Col md="6">
-          <Form.Control placeholder="Rechercher un produit..." value={q} onChange={(e) => setQ(e.target.value)} />
+          <Form.Control
+            placeholder="Rechercher un produit..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
         </Col>
       </Row>
 
@@ -88,7 +83,11 @@ export default function ProductsListPage() {
       </div>
 
       <div className="mb-3 d-flex flex-wrap gap-2">
-        <button type="button" className={`hp-tab ${cat === "" ? "is-active" : ""}`} onClick={() => setCat("")}>
+        <button
+          type="button"
+          className={`hp-tab ${cat === "" ? "is-active" : ""}`}
+          onClick={() => setCat("")}
+        >
           Tous
         </button>
         {CATS.map(({ key, label }) => (
@@ -110,15 +109,18 @@ export default function ProductsListPage() {
       )}
       {error && <Alert variant="danger">{error}</Alert>}
 
-      {!loading && !error && (filtered.length ? (
-        <div className="hp-grid">
-          {filtered.map((p) => (
-            <HomeProductCard key={p.id} product={p} />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center text-muted py-5 font-sans">Aucun produit à afficher.</div>
-      ))}
+      {!loading && !error && (
+        filtered.length ? (
+          <div className="hp-grid">
+            {filtered.map((p) => <HomeProductCard key={p.id} product={p} />)}
+          </div>
+        ) : (
+          <div className="text-center text-muted py-5 font-sans">
+            Aucun produit à afficher.
+          </div>
+        )
+      )}
     </Container>
   );
 }
+
