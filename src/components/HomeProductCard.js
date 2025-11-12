@@ -1,4 +1,3 @@
-// src/components/HomeProductCard.js
 import React from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -7,13 +6,19 @@ import { useCart } from "../cart/CartProvider";
 import { productImage } from "../utils/media";
 import "./HomeProducts.css";
 
-// Optional: pretty labels for category chips
 const CAT_LABELS = {
   face: "VISAGE",
   lips: "LÈVRES",
   eyes: "YEUX",
   eyebrow: "SOURCILS",
   hair: "CHEVEUX",
+  body: "CORPS",
+  packs: "PACKS",
+  acne: "ACNÉ",
+  hyper_pigmentation: "HYPER PIGMENTATION",
+  brightening: "ÉCLAIRCISSEMENT",
+  dry_skin: "PEAU SÈCHE",
+  combination_oily: "PEAU MIXTE/GRASSE",
   other: "AUTRES",
 };
 
@@ -24,7 +29,6 @@ export default function HomeProductCard({ product }) {
 
   const img = productImage(product);
 
-  // promo only on biggest variant
   const promoVariantId = product.promo_variant_id;
   const hasDiscount = !!product?.has_discount && !!promoVariantId;
   const promoVariant = (product.variants || []).find(
@@ -59,15 +63,14 @@ export default function HomeProductCard({ product }) {
     dispatch(toggleWishlist(id));
   };
 
-  // ---- NEW: build list of category chips (primary + additional) ----
+  // If your backend still returns categories array from older data, show them;
+  // otherwise this gracefully shows only the single primary category.
   const primary = (product.category || "").trim();
   const extrasRaw = Array.isArray(product.categories) ? product.categories : [];
-  // de-dupe & keep primary first
   const extras = extrasRaw.filter(
     (c) => c && String(c).trim().toLowerCase() !== primary.toLowerCase()
   );
   const chips = primary ? [primary, ...extras] : extras;
-  // -----------------------------------------------------------------
 
   return (
     <article className="hp-card">
@@ -91,11 +94,7 @@ export default function HomeProductCard({ product }) {
         >
           <i className="fas fa-heart" />
         </button>
-        <Link
-          className="hp-action-square"
-          to={`/product/${id}/`}
-          title="Voir le produit"
-        >
+        <Link className="hp-action-square" to={`/product/${id}/`} title="Voir le produit">
           <i className="fas fa-eye" />
         </Link>
       </div>
@@ -110,7 +109,6 @@ export default function HomeProductCard({ product }) {
           {hasDiscount && promoVariant ? ` — ${promoVariant.label}` : ""}
         </Link>
 
-        {/* NEW: show category chips */}
         {chips.length > 0 && (
           <div className="mt-1 d-flex flex-wrap" style={{ gap: 6 }}>
             {chips.map((c) => {
