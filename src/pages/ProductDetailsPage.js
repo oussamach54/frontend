@@ -270,5 +270,3 @@ function ProductDetailsPage({ history, match }) {
 }
 
 export default ProductDetailsPage;
-
-
