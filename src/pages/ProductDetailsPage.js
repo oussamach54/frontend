@@ -13,6 +13,23 @@ import {
 } from "../constants";
 import { productImage } from "../utils/media";
 
+// ✅ Add this mapping dictionary at the top
+const CATEGORY_LABELS = {
+  face: "Visage",
+  lips: "Lèvres",
+  eyes: "Yeux",
+  eyebrow: "Sourcils",
+  hair: "Cheveux",
+  body: "Corps",
+  packs: "Packs",
+  acne: "Acné",
+  hyper_pigmentation: "Hyper pigmentation",
+  brightening: "Éclaircissement",
+  dry_skin: "Peau sèche",
+  combination_oily: "Peau mixte/grasse",
+  other: "Autres",
+};
+
 function ProductDetailsPage({ history, match }) {
   const dispatch = useDispatch();
   const cart = useCart();
@@ -43,12 +60,10 @@ function ProductDetailsPage({ history, match }) {
     [variants, variantId]
   );
 
-  // promo on biggest variant (backend)
   const promoVariantId = product?.promo_variant_id || null;
   const hasDiscount = !!product?.has_discount && !!promoVariantId;
   const percent = Number(product?.discount_percent || 0);
 
-  // auto-select variant
   useEffect(() => {
     if (!variants.length) return;
     if (hasDiscount && promoVariantId && variantId == null) {
@@ -61,7 +76,6 @@ function ProductDetailsPage({ history, match }) {
     }
   }, [variants, hasDiscount, promoVariantId, variantId]);
 
-  // compute unit price
   const unitPrice = (() => {
     if (activeVariant) {
       if (hasDiscount && String(activeVariant.id) === String(promoVariantId)) {
@@ -112,6 +126,10 @@ function ProductDetailsPage({ history, match }) {
     history.push("/");
     dispatch({ type: DELETE_PRODUCT_RESET });
   }
+
+  // ✅ Convert slug to French label safely
+  const catSlug = (product?.category || "").toLowerCase();
+  const catLabel = CATEGORY_LABELS[catSlug] || product?.category || "—";
 
   return (
     <div>
@@ -165,8 +183,9 @@ function ProductDetailsPage({ history, match }) {
               <div className="pd-card mb-3">
                 <h2 className="pd-title">{product?.name}</h2>
 
+                {/* ✅ Category label now in French */}
                 <div className="pd-subtle mb-3">
-                  {product?.category ? <>Catégorie : <b>{product.category}</b></> : null}
+                  Catégorie : <b>{catLabel}</b>
                 </div>
 
                 <div className="mb-3">
@@ -176,7 +195,7 @@ function ProductDetailsPage({ history, match }) {
                     </span>
                   ) : (
                     <span className="pd-chip pd-chip--ko">
-                      <i className="fas fa-times-circle" /> Out of stock
+                      <i className="fas fa-times-circle" /> Hors stock
                     </span>
                   )}
                 </div>
@@ -253,7 +272,6 @@ function ProductDetailsPage({ history, match }) {
                   </button>
                   {userInfo && userInfo.admin && (
                     <>
-                      {/* ✅ FIX: send to the update page */}
                       <button
                         className="pd-btn-outline"
                         onClick={() => history.push(`/product-update/${product.id}/`)}
@@ -278,4 +296,3 @@ function ProductDetailsPage({ history, match }) {
 }
 
 export default ProductDetailsPage;
-
