@@ -1,66 +1,72 @@
-// src/pages/MyOrdersPage.jsx
+// src/pages/OrdersMyPage.js
 import React, { useEffect, useState } from "react";
+import { Container, Table, Spinner, Alert } from "react-bootstrap";
+import { Link } from "react-router-dom";
 import api from "../api";
-import { Table, Badge, Alert } from "react-bootstrap";
 
-const StatusBadge = ({ status }) => {
-  const map = {
-    PENDING: "secondary",
-    CONFIRMED: "info",
-    PAID: "primary",
-    SHIPPED: "warning",
-    DELIVERED: "success",
-    CANCELLED: "dark",
-  };
-  return <Badge variant={map[status] || "secondary"}>{status}</Badge>;
-};
-
-export default function MyOrdersPage() {
-  const [orders, setOrders] = useState([]);
+export default function OrdersMyPage() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
   useEffect(() => {
+    let alive = true;
     (async () => {
       try {
-        const { data } = await api.get("/account/orders/");
-        setOrders(data || []);
+        setLoading(true);
+        const { data } = await api.get("/orders/my/");   // ✅ correct endpoint
+        if (!alive) return;
+        setItems(Array.isArray(data) ? data : []);
       } catch (e) {
-        setErr(e?.response?.data?.detail || "Impossible de charger vos commandes.");
+        if (!alive) return;
+        setErr(e?.response?.data?.detail || e.message);
+      } finally {
+        if (alive) setLoading(false);
       }
     })();
+    return () => {
+      alive = false;
+    };
   }, []);
 
   return (
-    <div className="container py-4">
-      <h1 className="mb-4">Mes commandes</h1>
+    <Container className="py-4">
+      <h3>Mes commandes</h3>
+      {loading && <Spinner animation="border" />}
       {err && <Alert variant="danger">{err}</Alert>}
-
-      <Table striped hover responsive>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Client</th>
-            <th>Total</th>
-            <th>Statut</th>
-            <th>Payé</th>
-            <th>Livré</th>
-            <th>Créée</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(orders || []).map((o) => (
-            <tr key={o.id}>
-              <td>{o.id}</td>
-              <td>{o.customer_name || o.name}</td>
-              <td>{Number(o.total_price || 0).toFixed(2)} MAD</td>
-              <td><StatusBadge status={o.status} /></td>
-              <td>{o.paid_status ? "Oui" : "Non"}</td>
-              <td>{o.is_delivered ? "Oui" : "Non"}</td>
-              <td>{new Date(o.created_at).toLocaleString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </div>
+      {!loading && !err && (
+        items.length ? (
+          <Table size="sm" responsive hover>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Ville</th>
+                <th>Total</th>
+                <th>Statut</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((o) => (
+                <tr key={o.id}>
+                  <td>#{o.id}</td>
+                  <td>{new Date(o.created_at).toLocaleString()}</td>
+                  <td>{o.city}</td>
+                  <td>{Number(o.grand_total).toFixed(2)} MAD</td> {/* ✅ */}
+                  <td>{o.status}</td>
+                  <td>
+                    <Link to={`/order/${o.id}/`}>Voir</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        ) : (
+          <div className="text-muted">Aucune commande.</div>
+        )
+      )}
+    </Container>
   );
 }
+
