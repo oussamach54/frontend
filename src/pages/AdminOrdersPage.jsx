@@ -1,75 +1,108 @@
-// src/pages/AdminOrdersPage.jsx
+// src/pages/AdminOrdersPage.js
 import React, { useEffect, useState } from "react";
+import { Container, Table, Spinner, Alert, Form } from "react-bootstrap";
+import { Link, useHistory } from "react-router-dom";
 import api from "../api";
-import { Table, Alert, Form } from "react-bootstrap";
-
-const STATUSES = ["PENDING", "CONFIRMED", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"];
+import { useSelector } from "react-redux";
 
 export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState([]);
+  const { userInfo } = useSelector((s) => s.userLoginReducer || {});
+  const history = useHistory();
+  const [items, setItems] = useState([]);
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  const load = async () => {
-    try {
-      const { data } = await api.get("/account/orders/");
-      setOrders(data || []);
-    } catch (e) {
-      setErr(e?.response?.data?.detail || "Erreur de chargement.");
+  useEffect(() => {
+    if (!userInfo?.admin) {
+      history.push("/login");
+      return;
     }
-  };
+  }, [userInfo, history]);
 
-  useEffect(() => { load(); }, []);
-
-  const updateStatus = async (id, status) => {
-    try {
-      await api.put(`/account/orders/${id}/status/`, { status });
-      await load();
-    } catch (e) {
-      alert(e?.response?.data?.detail || "Erreur de mise à jour du statut.");
-    }
-  };
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const params = {};
+        if (status) params.status = status;
+        const { data } = await api.get("/orders/admin/", { params }); // ✅
+        if (!alive) return;
+        setItems(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!alive) return;
+        setErr(e?.response?.data?.detail || e.message);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [status]);
 
   return (
-    <div className="container py-4">
-      <h1 className="mb-4">Commandes (Admin)</h1>
+    <Container className="py-4">
+      <h3>Commandes — Admin</h3>
+      <div className="mb-2">
+        <Form inline="true">
+          <Form.Label className="mr-2">Filtrer par statut</Form.Label>
+          <Form.Control
+            as="select"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            style={{ maxWidth: 220 }}
+          >
+            <option value="">Tous</option>
+            <option value="pending">En attente</option>
+            <option value="paid">Payée</option>
+            <option value="shipped">Expédiée</option>
+            <option value="delivered">Livrée</option>
+            <option value="canceled">Annulée</option>
+          </Form.Control>
+        </Form>
+      </div>
+
+      {loading && <Spinner animation="border" />}
       {err && <Alert variant="danger">{err}</Alert>}
 
-      <Table striped hover responsive>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Client</th>
-            <th>Téléphone</th>
-            <th>Adresse</th>
-            <th>Total</th>
-            <th>Statut</th>
-            <th>Créée</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(orders || []).map((o) => (
-            <tr key={o.id}>
-              <td>{o.id}</td>
-              <td>{o.customer_name || o.name}</td>
-              <td>{o.phone}</td>
-              <td>{o.address} {o.city ? `(${o.city})` : ""}</td>
-              <td>{Number(o.total_price || 0).toFixed(2)} MAD</td>
-              <td style={{ minWidth: 180 }}>
-                <Form.Control
-                  as="select"
-                  value={o.status}
-                  onChange={(e) => updateStatus(o.id, e.target.value)}
-                >
-                  {STATUSES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </Form.Control>
-              </td>
-              <td>{new Date(o.created_at).toLocaleString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </div>
+      {!loading && !err && (
+        items.length ? (
+          <Table size="sm" responsive hover>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Client</th>
+                <th>Ville</th>
+                <th>Téléphone</th>
+                <th>Total</th>
+                <th>Statut</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((o) => (
+                <tr key={o.id}>
+                  <td>#{o.id}</td>
+                  <td>{new Date(o.created_at).toLocaleString()}</td>
+                  <td>{o.full_name}</td>
+                  <td>{o.city}</td>
+                  <td>{o.phone}</td>
+                  <td>{Number(o.grand_total).toFixed(2)} MAD</td> {/* ✅ */}
+                  <td>{o.status}</td>
+                  <td>
+                    <Link to={`/admin/orders/${o.id}/`}>Détail</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        ) : (
+          <div className="text-muted">Aucune commande.</div>
+        )
+      )}
+    </Container>
   );
 }
