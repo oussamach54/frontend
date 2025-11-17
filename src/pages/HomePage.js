@@ -16,7 +16,7 @@ const CATS = [
   { key: "eyes",    label: "YEUX"    },
   { key: "eyebrow", label: "SOURCILS"},
   { key: "hair",    label: "CHEVEUX" },
-  { key: "corps",    label: "CORPS" },
+
 ];
 
 export default function HomePage() {
