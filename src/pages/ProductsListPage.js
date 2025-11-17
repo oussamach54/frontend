@@ -33,7 +33,7 @@ export default function ProductsListPage() {
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     const b = p.get("brand") || "";
-    const c = p.get("category") || p.get("type") || "";
+    const c = (p.get("category") || p.get("type") || "").toLowerCase();
     const s = p.get("search") || p.get("searchTerm") || "";
     setBrand(b);
     setCat(c);
@@ -76,12 +76,22 @@ export default function ProductsListPage() {
     return () => { alive = false; };
   }, [cat, brand, q]);
 
-  // Client-side final filter: enforce **name-only** contains
+  // Client-side final filter: category can come from `category` OR `categories[]`
   const filtered = useMemo(() => {
     const s = (q || "").trim().toLowerCase();
-    return items.filter(p => {
-      const okCat = !cat || (p.category || "").toLowerCase() === cat;
+    const selected = (cat || "").toLowerCase();
+
+    return items.filter((p) => {
+      const primary = (p.category || "").toLowerCase();
+      const extra = Array.isArray(p.categories)
+        ? p.categories.map((c) => (c || "").toLowerCase())
+        : [];
+
+      const allCats = primary ? [primary, ...extra] : extra;
+      const okCat = !selected || allCats.includes(selected);
+
       if (!s) return okCat;
+
       const name = (p.name || "").toLowerCase();
       return okCat && name.includes(s); // name-only filter
     });
@@ -103,7 +113,11 @@ export default function ProductsListPage() {
       </Row>
 
       <div className="mb-2">
-        {brand ? <small className="text-muted">Marque sélectionnée : <b>{brand}</b></small> : null}
+        {brand ? (
+          <small className="text-muted">
+            Marque sélectionnée : <b>{brand}</b>
+          </small>
+        ) : null}
       </div>
 
       <div className="mb-3 d-flex flex-wrap gap-2">
@@ -136,7 +150,9 @@ export default function ProductsListPage() {
       {!loading && !error && (
         filtered.length ? (
           <div className="hp-grid">
-            {filtered.map((p) => <HomeProductCard key={p.id} product={p} />)}
+            {filtered.map((p) => (
+              <HomeProductCard key={p.id} product={p} />
+            ))}
           </div>
         ) : (
           <div className="text-center text-muted py-5 font-sans">
@@ -147,4 +163,3 @@ export default function ProductsListPage() {
     </Container>
   );
 }
-
