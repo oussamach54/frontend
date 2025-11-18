@@ -132,7 +132,7 @@ function ProductDetailsPage({ history, match }) {
     dispatch({ type: DELETE_PRODUCT_RESET });
   }
 
-  // ✅ Build full category list from `categories[]` or fallback to single `category`
+  // Build full category list from `categories[]` or fallback to single `category`
   const rawCats =
     Array.isArray(product?.categories) && product.categories.length
       ? product.categories
@@ -204,7 +204,7 @@ function ProductDetailsPage({ history, match }) {
               <div className="pd-card mb-3">
                 <h2 className="pd-title">{product?.name}</h2>
 
-                {/* ✅ Show all categories nicely */}
+                {/* Catégories */}
                 <div className="pd-subtle mb-3">
                   Catégorie(s)&nbsp;:
                   {prettyCats.length ? (
