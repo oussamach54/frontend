@@ -8,7 +8,9 @@
 }
 @media (max-width: 1200px) { .hp-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 768px)  { .hp-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 480px)  { .hp-grid { grid-template-columns: 1fr; } }
+
+/* 🔁 CHANGEMENT ICI : on garde 2 colonnes sur mobile */
+@media (max-width: 480px)  { .hp-grid { grid-template-columns: repeat(2, 1fr); } }
 
 /* Card shell */
 .hp-card {
@@ -61,6 +63,13 @@
 .hp-card:hover .hp-media img {
   transform: scale(1.06);
   filter: saturate(1.06);
+}
+
+/* 🔁 CHANGEMENT : image un peu moins haute sur petit écran */
+@media (max-width: 480px) {
+  .hp-media {
+    aspect-ratio: 3 / 4;
+  }
 }
 
 /* Centered hover actions */
