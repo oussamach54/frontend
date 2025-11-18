@@ -36,8 +36,11 @@ export default function ProductCreatePage() {
   const [image, setImage] = useState(null);
 
   const [brand, setBrand] = useState("");
-  // ✅ multi categories in a nice UI
+  // multi categories
   const [categories, setCategories] = useState(["other"]);
+
+  // ⭐ NEW: produit favori
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const [variants, setVariants] = useState([
     { label: "", size_ml: "", price: "", in_stock: true, sku: "" },
@@ -80,15 +83,15 @@ export default function ProductCreatePage() {
     setNewPrice(String(+(base * (100 - pct) / 100).toFixed(2)));
   };
 
-  // ✅ toggle pill-style categories
+  // toggle pill-style categories
   const toggleCategory = (slug) => {
     setCategories((prev) => {
       if (prev.includes(slug)) {
-        // avoid ending with 0 categories – keep "other" as fallback
+        // éviter 0 catégories – garder "other" en fallback
         const next = prev.filter((c) => c !== slug);
         return next.length ? next : ["other"];
       }
-      // remove "other" when adding a real category
+      // enlever "other" quand on ajoute une vraie catégorie
       const base = prev.filter((c) => c !== "other");
       return [...base, slug];
     });
@@ -108,6 +111,9 @@ export default function ProductCreatePage() {
     const primary = (categories[0] || "other").toLowerCase();
     fd.append("category", primary);
     fd.append("categories", JSON.stringify(categories));
+
+    // ⭐ envoyer favori au backend
+    fd.append("is_favorite", isFavorite ? "true" : "false");
 
     const clean = variants
       .filter((v) => v.label && String(v.price) !== "")
@@ -191,7 +197,7 @@ export default function ProductCreatePage() {
           />
         </Form.Group>
 
-        {/* ✅ Pretty pill-style multi-category selector */}
+        {/* Multi-catégories */}
         <Form.Group controlId="category">
           <Form.Label>
             <b>Categories</b>
@@ -275,6 +281,17 @@ export default function ProductCreatePage() {
             type="checkbox"
             checked={stock}
             onChange={() => setStock(!stock)}
+          />
+        </div>
+
+        {/* ⭐ Produit favori */}
+        <div className="d-flex align-items-center mb-3">
+          <Form.Label className="mb-0">Produit favori (homepage)</Form.Label>
+          <Form.Check
+            className="ml-2"
+            type="checkbox"
+            checked={isFavorite}
+            onChange={() => setIsFavorite(!isFavorite)}
           />
         </div>
 
