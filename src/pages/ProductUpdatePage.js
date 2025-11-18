@@ -39,6 +39,9 @@ export default function ProductUpdatePage({ match }) {
   const [discountPct, setDiscountPct] = useState("");
   const [stock, setStock] = useState(false);
 
+  // ⭐ NEW: favoris
+  const [isFavorite, setIsFavorite] = useState(false);
+
   const [newImage, setNewImage] = useState(false);
   const [image, setImage] = useState(null);
 
@@ -92,6 +95,10 @@ export default function ProductUpdatePage({ match }) {
       product.new_price != null ? String(product.new_price) : ""
     );
     setStock(!!product.stock);
+
+    // ⭐ init favoris
+    setIsFavorite(!!product.is_favorite);
+
     setVariants(
       (product.variants || []).map((v) => ({
         label: v.label || "",
@@ -130,12 +137,15 @@ export default function ProductUpdatePage({ match }) {
     fd.append("description", description);
     fd.append("price", norm(price));
     fd.append("new_price", newPrice === "" ? "" : norm(newPrice));
-    fd.append("stock", stock);
+    fd.append("stock", stock ? "true" : "false");
     fd.append("brand", brand);
 
     const primary = (categories[0] || "other").toLowerCase();
     fd.append("category", primary);
     fd.append("categories", JSON.stringify(categories));
+
+    // ⭐ envoyer favoris
+    fd.append("is_favorite", isFavorite ? "true" : "false");
 
     if (newImage && image) fd.append("image", image);
 
@@ -272,7 +282,7 @@ export default function ProductUpdatePage({ match }) {
             />
           </Form.Group>
 
-          {/* ✅ Pretty pill-style multi-category selector */}
+          {/* Categories */}
           <Form.Group controlId="category">
             <Form.Label>
               <b>Categories</b>
@@ -365,6 +375,17 @@ export default function ProductUpdatePage({ match }) {
               type="checkbox"
               checked={stock}
               onChange={() => setStock(!stock)}
+            />
+          </div>
+
+          {/* ⭐ Favori */}
+          <div className="d-flex align-items-center mb-3">
+            <Form.Label className="mb-0">Produit favori (homepage)</Form.Label>
+            <Form.Check
+              className="ml-2"
+              type="checkbox"
+              checked={isFavorite}
+              onChange={() => setIsFavorite(!isFavorite)}
             />
           </div>
 
