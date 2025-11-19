@@ -1,7 +1,7 @@
 // src/pages/HomePage.js
-import React, { useEffect, useMemo, useState } from 'react';
-import { Container, Row, Col, Button, Spinner, Alert, Nav } from 'react-bootstrap';
-import api from '../api';
+import React, { useEffect, useMemo, useState } from "react";
+import { Container, Row, Col, Button, Spinner, Alert, Nav } from "react-bootstrap";
+import api from "../api";
 
 import "../components/HomeProducts.css";
 import HomeProductCard from "../components/HomeProductCard";
@@ -11,11 +11,11 @@ import SiteFooter from "../components/SiteFooter";
 import HScrollButtons from "../components/HScrollButtons";
 
 const CATS = [
-  { key: "face",    label: "VISAGE"  },
-  { key: "lips",    label: "LÈVRES"  },
-  { key: "eyes",    label: "YEUX"    },
-  { key: "eyebrow", label: "SOURCILS"},
-  { key: "hair",    label: "CHEVEUX" },
+  { key: "face",    label: "VISAGE"   },
+  { key: "lips",    label: "LÈVRES"   },
+  { key: "eyes",    label: "YEUX"     },
+  { key: "eyebrow", label: "SOURCILS" },
+  { key: "hair",    label: "CHEVEUX"  },
 ];
 
 export default function HomePage() {
@@ -28,20 +28,28 @@ export default function HomePage() {
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [errorFeatured, setErrorFeatured]     = useState(null);
 
-  const banners = useMemo(() => ([
-    '/hero/banner1.jpg',
-    '/hero/banner2.jpg',
-    '/hero/banner3.jpg',
-    '/hero/banner4.jpg',
-    '/hero/banner5.jpg',
-  ]), []);
+  // ⭐ favoris
+  const [favorites, setFavorites]   = useState([]);
+  const [loadingFav, setLoadingFav] = useState(true);
+  const [errorFav, setErrorFav]     = useState(null);
 
-  // Featured
+  const banners = useMemo(
+    () => [
+      "/hero/banner1.jpg",
+      "/hero/banner2.jpg",
+      "/hero/banner3.jpg",
+      "/hero/banner4.jpg",
+      "/hero/banner5.jpg",
+    ],
+    []
+  );
+
+  // Produits mis en avant
   useEffect(() => {
     let ok = true;
     (async () => {
       try {
-        const { data } = await api.get('/products/');
+        const { data } = await api.get("/products/");
         if (ok) setFeatured((data || []).slice(0, 12));
       } catch (e) {
         if (ok) setErrorFeatured(e?.response?.data?.detail || e.message);
@@ -49,10 +57,34 @@ export default function HomePage() {
         if (ok) setLoadingFeatured(false);
       }
     })();
-    return () => { ok = false; };
+    return () => {
+      ok = false;
+    };
   }, []);
 
-  // Tabbed categories
+  // ⭐ Produits favoris
+  useEffect(() => {
+    let alive = true;
+    setLoadingFav(true);
+    setErrorFav(null);
+    (async () => {
+      try {
+        const { data } = await api.get("/products/", { params: { favorite: 1 } });
+        if (!alive) return;
+        setFavorites(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!alive) return;
+        setErrorFav(e?.response?.data?.detail || e.message);
+      } finally {
+        if (alive) setLoadingFav(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Produits par catégorie (onglets)
   useEffect(() => {
     let alive = true;
     setLoading(true);
@@ -60,7 +92,7 @@ export default function HomePage() {
     setProducts([]);
     (async () => {
       try {
-        const { data } = await api.get('/products/', { params: { type: tab } });
+        const { data } = await api.get("/products/", { params: { type: tab } });
         if (!alive) return;
         setProducts(Array.isArray(data) ? data : []);
       } catch (e) {
@@ -69,41 +101,50 @@ export default function HomePage() {
         if (alive) setLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [tab]);
 
   return (
     <>
-      {/* ===== HERO strip ===== */}
+      {/* ===== Bandeau d’accueil ===== */}
       <section className="hero-strip">
         <div className="hero-overlay text-center text-white">
           <h1 className="display-hero font-display mb-3">
-            Welcome to Your Miniglow by shay
+            Bienvenue sur Miniglow by Shay
           </h1>
           <p className="display-sub lead-tight font-sans mb-4">
-            Safe, effective routines for hydration, brightening and barrier repair — shipped fast.
+            “MiniGlow by Shay – Décants de cosmétiques originaux pour briller chaque jour”.
           </p>
-          <Button size="lg" variant="light" href="/products">Discover our products</Button>
+          <Button size="lg" variant="light" href="/products">
+            Découvrir nos produits
+          </Button>
         </div>
 
         <div className="hero-track">
           {banners.map((src, i) => (
-            <img key={`a-${i}`} className="hero-tile" src={src} alt={`banner ${i + 1}`} />
+            <img key={`a-${i}`} className="hero-tile" src={src} alt={`bannière ${i + 1}`} />
           ))}
           {banners.map((src, i) => (
-            <img key={`b-${i}`} className="hero-tile" src={src} alt={`banner dup ${i + 1}`} />
+            <img key={`b-${i}`} className="hero-tile" src={src} alt={`bannière copie ${i + 1}`} />
           ))}
         </div>
       </section>
 
-      {/* ===== Featured ===== */}
+      {/* ===== Produits mis en avant ===== */}
       <Container className="py-5">
         <Row className="align-items-center mb-3">
           <Col>
-            <h2 className="m-0 font-display fw-700">Featured this week</h2>
+            {/* 👇 added .home-section-title */}
+            <h2 className="m-0 font-display fw-700 home-section-title">
+              Nouveautés semaine</h2>
+            
           </Col>
           <Col className="text-right">
-            <Button variant="outline-secondary" size="sm" href="/products">See all</Button>
+            <Button variant="outline-secondary" size="sm" href="/products">
+              Voir tous les produits
+            </Button>
           </Col>
         </Row>
 
@@ -117,17 +158,52 @@ export default function HomePage() {
         {!loadingFeatured && !errorFeatured && (
           featured.length ? (
             <HScrollButtons step={340}>
-              {featured.map((p) => <HomeProductCard key={p.id} product={p} />)}
+              {featured.map((p) => (
+                <HomeProductCard key={p.id} product={p} />
+              ))}
             </HScrollButtons>
           ) : (
             <div className="text-center text-muted py-5 font-sans">
-              No featured products yet.
+              Aucun produit mis en avant pour le moment.
             </div>
           )
         )}
       </Container>
 
-      {/* ===== Category shelf (tabs) ===== */}
+      {/* ⭐ ===== Produits favoris ===== */}
+      <Container className="pb-4">
+        <Row className="align-items-center mb-3">
+          <Col>
+            {/* 👇 added .home-section-title */}
+            <h2 className="m-0 font-display fw-700 home-section-title">
+              Nos produits favoris
+            </h2>
+          </Col>
+        </Row>
+
+        {loadingFav && (
+          <div className="d-flex justify-content-center py-4">
+            <Spinner animation="border" />
+          </div>
+        )}
+        {errorFav && <Alert variant="danger">{errorFav}</Alert>}
+
+        {!loadingFav && !errorFav && (
+          favorites.length ? (
+            <HScrollButtons step={340}>
+              {favorites.map((p) => (
+                <HomeProductCard key={p.id} product={p} />
+              ))}
+            </HScrollButtons>
+          ) : (
+            <div className="text-center text-muted py-4 font-sans">
+              Aucun produit favori sélectionné pour le moment.
+            </div>
+          )
+        )}
+      </Container>
+
+      {/* ===== Rayons par catégorie (onglets) ===== */}
       <Container className="py-4">
         <div className="hp-tabs">
           <Nav
@@ -138,7 +214,10 @@ export default function HomePage() {
           >
             {CATS.map(({ key, label }) => (
               <Nav.Item key={key}>
-                <Nav.Link eventKey={key} className={`hp-tab ${tab === key ? "is-active" : ""} font-sans`}>
+                <Nav.Link
+                  eventKey={key}
+                  className={`hp-tab ${tab === key ? "is-active" : ""} font-sans`}
+                >
                   {label}
                 </Nav.Link>
               </Nav.Item>
@@ -157,7 +236,9 @@ export default function HomePage() {
           {!loading && !error && (
             products.length ? (
               <HScrollButtons step={340}>
-                {products.map((p) => <HomeProductCard key={p.id} product={p} />)}
+                {products.map((p) => (
+                  <HomeProductCard key={p.id} product={p} />
+                ))}
               </HScrollButtons>
             ) : (
               <div className="text-center text-muted py-5 font-sans">
@@ -170,7 +251,7 @@ export default function HomePage() {
 
       <BrandMarquee />
 
-      {/* ===== Skincare video spotlight ===== */}
+      {/* ===== Mise en avant vidéo soins de la peau ===== */}
       <section className="video-section">
         <Container>
           <Row className="align-items-center">
@@ -178,14 +259,23 @@ export default function HomePage() {
               <h2 className="video-title font-display">Découvrez la beauté au naturel 🌿</h2>
               <p className="video-desc font-sans">
                 Prenez un moment pour vous. Découvrez notre gamme de soins inspirée par la nature
-                et conçue pour sublimer votre peau. Des gestes simples, des résultats visibles — votre rituel beauté
-                commence ici.
+                et conçue pour sublimer votre peau. Des gestes simples, des résultats visibles — votre
+                rituel beauté commence ici.
               </p>
-              <Button variant="dark" size="lg" href="/products">Explorer les soins</Button>
+              <Button variant="dark" size="lg" href="/products">
+                Explorer les soins
+              </Button>
             </Col>
             <Col md={7} className="video-col">
               <div className="video-wrapper">
-                <video autoPlay loop muted playsInline className="skincare-video" poster="/video/preview.jpg">
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="skincare-video"
+                  poster="/video/preview.jpg"
+                >
                   <source src="/video/skincare.mp4" type="video/mp4" />
                   Votre navigateur ne supporte pas la lecture vidéo.
                 </video>

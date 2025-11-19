@@ -9,7 +9,7 @@ import './styles/typography.css';
 import './App.css';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-
+document.title = "MiniGlow by Shay"; // safety
 ReactDOM.render(
   <Provider store={store}>
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>

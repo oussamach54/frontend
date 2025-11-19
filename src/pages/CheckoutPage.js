@@ -1,9 +1,11 @@
-// src/pages/CheckoutPage.js
+// frontend/src/pages/CheckoutPage.js
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert } from "react-bootstrap";
 import api from "../api";
 import { useCart } from "../cart/CartProvider";
 import { SHOP } from "../config/shop";
+import { createOrder } from "../apiOrders";
+import { useHistory } from "react-router-dom";
 import "./checkout.css";
 
 /** Fallback if API is unreachable */
@@ -23,16 +25,13 @@ const FALLBACK_RATES = [
   { city: "Livraison pour toutes les autres villes", price: 45 },
 ];
 
-/** Try a list of endpoints; return first success (200). */
 async function tryUrls(calls) {
   let lastErr;
   for (const call of calls) {
     try {
-      const res = await call();
-      return res;
+      return await call();
     } catch (e) {
       const code = e?.response?.status;
-      // 404/405 means path mismatch—try next; other codes bubble up
       if (code !== 404 && code !== 405) throw e;
       lastErr = e;
     }
@@ -41,72 +40,69 @@ async function tryUrls(calls) {
 }
 
 export default function CheckoutPage() {
-  const { items, totals } = useCart();
+  const history = useHistory();
+  const { items, totals, clear } = useCart();
 
   // contact + adresse
-  const [email, setEmail]   = useState("");
-  const [first, setFirst]   = useState("");
-  const [last, setLast]     = useState("");
-  const [addr, setAddr]     = useState("");
-  const [apt, setApt]       = useState("");
-  const [zip, setZip]       = useState("");
-  const [city, setCity]     = useState("");
-  const [phone, setPhone]   = useState("");
+  const [email, setEmail] = useState("");
+  const [first, setFirst] = useState("");
+  const [last, setLast] = useState("");
+  const [addr, setAddr] = useState("");
+  const [apt, setApt] = useState("");
+  const [zip, setZip] = useState("");
+  const [city, setCity] = useState("");
+  const [phone, setPhone] = useState("");
 
   // expédition
   const [rates, setRates] = useState(FALLBACK_RATES);
   const [shippingPrice, setShippingPrice] = useState(0);
 
-  // ui
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // === Load shipping rates; try multiple candidates in prod ===
+  // load shipping rates
   useEffect(() => {
     let alive = true;
-
     const isProdApp =
       typeof window !== "undefined" &&
       window.location.hostname.endsWith("miniglowbyshay.cloud") &&
       !window.location.hostname.startsWith("api.");
-
-    // absolute API base for cross-origin try (only used as a last resort)
     const ABS_API = "https://api.miniglowbyshay.cloud";
 
     (async () => {
       try {
         const { data, hit } = await tryUrls([
-          // 1) same as admin page (works locally and on many setups)
           async () => {
             const res = await api.get("/payments/shipping-rates/");
-            return { data: res.data, hit: "api: /payments/shipping-rates/" };
+            return { data: res.data, hit: "api:/payments/shipping-rates/" };
           },
-          // 2) if a second /api is required (some proxies prepend/strip)
           async () => {
             const res = await api.get("/api/payments/shipping-rates/");
-            return { data: res.data, hit: "api: /api/payments/shipping-rates/" };
+            return { data: res.data, hit: "api:/api/payments/shipping-rates/" };
           },
-          // 3) absolute cloud URL (when same-origin path mapping fails)
           ...(isProdApp
             ? [
                 async () => {
-                  const res = await fetch(`${ABS_API}/api/payments/shipping-rates/`, {
-                    credentials: "omit",
-                  });
-                  if (!res.ok) {
-                    const e = new Error(`HTTP ${res.status}`);
-                    e.response = { status: res.status };
-                    throw e;
-                  }
+                  const res = await fetch(
+                    `${ABS_API}/api/payments/shipping-rates/`,
+                    { credentials: "omit" }
+                  );
+                  if (!res.ok)
+                    throw Object.assign(
+                      new Error(`HTTP ${res.status}`),
+                      { response: { status: res.status } }
+                    );
                   const json = await res.json();
-                  return { data: json, hit: `abs: ${ABS_API}/api/payments/shipping-rates/` };
+                  return {
+                    data: json,
+                    hit: `abs:${ABS_API}/api/payments/shipping-rates/`,
+                  };
                 },
               ]
             : []),
         ]);
 
         if (!alive) return;
-
         if (Array.isArray(data) && data.length) {
           const normalized = data
             .filter((r) => r.active !== false)
@@ -116,7 +112,6 @@ export default function CheckoutPage() {
             }))
             .filter((r) => r.city)
             .sort((a, b) => a.city.localeCompare(b.city, "fr"));
-
           if (normalized.length) {
             console.log("[Checkout] Shipping rates loaded from:", hit);
             setRates(normalized);
@@ -125,16 +120,17 @@ export default function CheckoutPage() {
         }
         console.warn("[Checkout] API returned empty list; using fallback.");
       } catch (e) {
-        console.warn("[Checkout] Failed to load API shipping rates; using fallback.", e?.message || e);
+        console.warn(
+          "[Checkout] Failed to load API shipping rates; using fallback.",
+          e?.message || e
+        );
       }
     })();
-
     return () => {
       alive = false;
     };
   }, []);
 
-  // Preselect default city
   useEffect(() => {
     if (!rates.length) return;
     const def =
@@ -148,17 +144,20 @@ export default function CheckoutPage() {
     [totals.subtotal, shippingPrice]
   );
 
-  /** WhatsApp message */
-  const buildWhatsAppUrl = () => {
+  const buildWhatsAppUrl = (createdOrder) => {
     const lines = [];
-    lines.push(`*${SHOP.BRAND}* – Nouvelle commande`);
+    lines.push(
+      `*${SHOP.BRAND}* – Nouvelle commande #${createdOrder?.id ?? "?"}`
+    );
     lines.push("");
     lines.push("*Articles :*");
     items.forEach((it) => {
       const q = Number(it.qty || 1);
       const p = Number(it.price).toFixed(2);
       lines.push(
-        `• ${it.name}${it.variantLabel ? " (" + it.variantLabel + ")" : ""} — ${p} MAD × ${q}`
+        `• ${it.name}${
+          it.variantLabel ? " (" + it.variantLabel + ")" : ""
+        } — ${p} MAD × ${q}`
       );
     });
     lines.push("");
@@ -171,12 +170,14 @@ export default function CheckoutPage() {
     lines.push("");
     lines.push("*Coordonnées :*");
     if (email) lines.push(`Email : ${email}`);
-    lines.push(`Nom : ${(first || "").trim()} ${(last || "").trim()}`.trim());
+    lines.push(
+      `Nom : ${(first || "").trim()} ${(last || "").trim()}`.trim()
+    );
     lines.push(`Téléphone : ${phone || "-"}`);
     lines.push(
-      `Adresse : ${addr}${apt ? ", " + apt : ""}${zip ? ", " + zip : ""}${
-        city ? " – " + city : ""
-      }`.trim()
+      `Adresse : ${addr}${apt ? ", " + apt : ""}${
+        zip ? ", " + zip : ""
+      }${city ? " – " + city : ""}`.trim()
     );
     lines.push("");
     lines.push("Merci de confirmer ma commande 🙏");
@@ -184,7 +185,7 @@ export default function CheckoutPage() {
     return `https://wa.me/${SHOP.WHATSAPP}?text=${msg}`;
   };
 
-  const submit = () => {
+  const submit = async () => {
     setErr("");
     if (!items.length) {
       setErr("Votre panier est vide.");
@@ -194,8 +195,53 @@ export default function CheckoutPage() {
       setErr("Adresse, ville et téléphone sont obligatoires.");
       return;
     }
-    setLoading(true);
-    window.location.href = buildWhatsAppUrl();
+
+    try {
+      setLoading(true);
+
+      const full_name =
+        `${(first || "").trim()} ${(last || "").trim()}`.trim() ||
+        last ||
+        first ||
+        "Client";
+
+      const payload = {
+        full_name,
+        email,
+        phone,
+        city,
+        address: `${addr}${apt ? ", " + apt : ""}${
+          zip ? ", " + zip : ""
+        }`.trim(),
+        notes: "",
+        payment_method: "cod",
+        shipping_price: Number(shippingPrice || 0), // ✅ send shipping price
+        items: items.map((it) => ({
+          product_id: it.id,
+          variant_id: it.variantId || null,
+          quantity: Number(it.qty || 1),
+        })),
+      };
+
+      // 1) Save order to backend
+      const order = await createOrder(payload);
+
+      // 2) Open WhatsApp
+      const wa = buildWhatsAppUrl(order);
+      window.open(wa, "_blank", "noopener,noreferrer");
+
+      // 3) Clear cart + redirect to order page
+      clear();
+      history.replace(`/order/${order.id}/`);
+    } catch (e) {
+      setErr(
+        e?.response?.data?.detail ||
+          e.message ||
+          "Impossible d’enregistrer la commande."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -204,30 +250,45 @@ export default function CheckoutPage() {
         <h2 className="co-title">Contact</h2>
         <div className="co-field">
           <label>E-mail ou numéro de portable</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
 
         <h2 className="co-title">Livraison</h2>
         <div className="co-grid-2">
           <div className="co-field">
             <label>Prénom (optionnel)</label>
-            <input value={first} onChange={(e) => setFirst(e.target.value)} />
+            <input
+              value={first}
+              onChange={(e) => setFirst(e.target.value)}
+            />
           </div>
           <div className="co-field">
             <label>Nom</label>
-            <input value={last} onChange={(e) => setLast(e.target.value)} />
+            <input
+              value={last}
+              onChange={(e) => setLast(e.target.value)}
+            />
           </div>
         </div>
 
         <div className="co-field">
           <label>Adresse</label>
-          <input value={addr} onChange={(e) => setAddr(e.target.value)} />
+          <input
+            value={addr}
+            onChange={(e) => setAddr(e.target.value)}
+          />
         </div>
 
         <div className="co-grid-2">
           <div className="co-field">
             <label>Appartement, suite, etc. (optionnel)</label>
-            <input value={apt} onChange={(e) => setApt(e.target.value)} />
+            <input
+              value={apt}
+              onChange={(e) => setApt(e.target.value)}
+            />
           </div>
           <div className="co-field">
             <label>Ville</label>
@@ -238,11 +299,17 @@ export default function CheckoutPage() {
         <div className="co-grid-2">
           <div className="co-field">
             <label>Code postal (facultatif)</label>
-            <input value={zip} onChange={(e) => setZip(e.target.value)} />
+            <input
+              value={zip}
+              onChange={(e) => setZip(e.target.value)}
+            />
           </div>
           <div className="co-field">
             <label>Téléphone</label>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
           </div>
         </div>
 
@@ -252,7 +319,12 @@ export default function CheckoutPage() {
             {rates.map((r) => {
               const checked = r.city === city;
               return (
-                <label key={r.city} className={`co-ship-row ${checked ? "is-active" : ""}`}>
+                <label
+                  key={r.city}
+                  className={`co-ship-row ${
+                    checked ? "is-active" : ""
+                  }`}
+                >
                   <input
                     type="radio"
                     name="ship"
@@ -263,7 +335,9 @@ export default function CheckoutPage() {
                     }}
                   />
                   <span className="co-ship-city">{r.city}</span>
-                  <span className="co-ship-price">{Number(r.price).toFixed(2)} MAD</span>
+                  <span className="co-ship-price">
+                    {Number(r.price).toFixed(2)} MAD
+                  </span>
                 </label>
               );
             })}
@@ -275,19 +349,32 @@ export default function CheckoutPage() {
           <div className="co-pay-row">
             <input type="radio" checked readOnly />
             <div>
-              <div className="co-pay-title">Paiement à la livraison</div>
+              <div className="co-pay-title">
+                Paiement à la livraison
+              </div>
               <div className="co-pay-help">
-                Paiement à la livraison disponible dans toutes les villes du Maroc.
-                Pas besoin de payer en ligne. La confirmation se fait sur WhatsApp.
+                Paiement à la livraison disponible dans toutes les
+                villes du Maroc. Pas besoin de payer en ligne. La
+                confirmation se fait sur WhatsApp.
               </div>
             </div>
           </div>
         </div>
 
-        {err && <Alert variant="danger" className="mt-2">{err}</Alert>}
+        {err && (
+          <Alert variant="danger" className="mt-2">
+            {err}
+          </Alert>
+        )}
 
-        <button className="co-submit" onClick={submit} disabled={loading}>
-          {loading ? "Redirection vers WhatsApp…" : "Valider le paiement"}
+        <button
+          className="co-submit"
+          onClick={submit}
+          disabled={loading}
+        >
+          {loading
+            ? "Redirection vers WhatsApp…"
+            : "Valider la commande"}
         </button>
       </div>
 
@@ -303,11 +390,20 @@ export default function CheckoutPage() {
                     <img src={i.image} alt={i.name} />
                     <div className="co-item-info">
                       <div className="co-item-name">{i.name}</div>
-                      {i.variantLabel && <div className="co-item-variant">{i.variantLabel}</div>}
-                      <div className="co-item-qty">× {i.qty || 1}</div>
+                      {i.variantLabel && (
+                        <div className="co-item-variant">
+                          {i.variantLabel}
+                        </div>
+                      )}
+                      <div className="co-item-qty">
+                        × {i.qty || 1}
+                      </div>
                     </div>
                     <div className="co-item-price">
-                      {(Number(i.price) * Number(i.qty || 1)).toFixed(2)} MAD
+                      {(
+                        Number(i.price) * Number(i.qty || 1)
+                      ).toFixed(2)}{" "}
+                      MAD
                     </div>
                   </li>
                 ))}
@@ -315,7 +411,9 @@ export default function CheckoutPage() {
 
               <div className="co-line">
                 <span>Sous-total</span>
-                <b>{Number(totals.subtotal || 0).toFixed(2)} MAD</b>
+                <b>
+                  {Number(totals.subtotal || 0).toFixed(2)} MAD
+                </b>
               </div>
               <div className="co-line">
                 <span>Expédition</span>

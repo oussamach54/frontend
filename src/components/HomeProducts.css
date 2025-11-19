@@ -1,216 +1,343 @@
-/* ===========================================
-   Home Product Grid (polished)
-   =========================================== */
+/* =========================================================
+   GRILLE PRODUITS (page /products)
+   2 produits par ligne sur mobile, pas de zoom
+   ========================================================= */
+
 .hp-grid {
   display: grid;
-  gap: 26px;
+  gap: 24px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
-@media (max-width: 1200px) { .hp-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 768px)  { .hp-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 480px)  { .hp-grid { grid-template-columns: 1fr; } }
 
-/* Card shell */
+@media (max-width: 1200px) {
+  .hp-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 992px) {
+  .hp-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .hp-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 576px) {
+  .hp-grid {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 380px) {
+  .hp-grid {
+    grid-template-columns: repeat(2, minmax(135px, 1fr));
+  }
+}
+
+/* =========================================================
+   CARTE PRODUIT (utilisée partout)
+   ========================================================= */
+
 .hp-card {
   position: relative;
-  background: #fff;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
   border: 1px solid rgba(15, 23, 42, 0.06);
   border-radius: 16px;
   box-shadow: 0 8px 26px rgba(16, 24, 40, 0.06);
   overflow: hidden;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
-  will-change: transform, box-shadow, border-color;
+  transition: transform 0.25s ease, box-shadow 0.25s ease,
+    border-color 0.25s ease;
 }
+
 .hp-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 14px 42px rgba(16, 24, 40, 0.12);
+  transform: translateY(-4px);
+  box-shadow: 0 14px 38px rgba(16, 24, 40, 0.14);
   border-color: rgba(15, 23, 42, 0.1);
 }
 
-/* Top corner badges */
+/* -------- VISUEL -------- */
+
+.hp-media {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5; /* ratio propre sur mobile */
+  background: linear-gradient(180deg, #ffffff, #faf9ff);
+  overflow: hidden;
+}
+
+.hp-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scale(1.02);
+  transition: transform 0.3s ease, filter 0.3s ease;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.hp-card:hover .hp-media img {
+  transform: scale(1.06);
+  filter: saturate(1.06);
+}
+
+@media (max-width: 576px) {
+  .hp-media {
+    aspect-ratio: 3 / 4;
+  }
+}
+
+/* -------- BADGES -------- */
+
 .hp-badge {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 2;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
   padding: 6px 10px;
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 700;
   backdrop-filter: blur(4px);
 }
-.hp-badge--new { color: #075985; background: #e0f2fe; border: 1px solid #bae6fd; }
-.hp-badge--ko  { color: #b91c1c; background: #fee2e2; border: 1px solid #fecaca; }
 
-/* Media (no darkening) */
-.hp-media {
-  display: block;
-  aspect-ratio: 4 / 5;
-  background: linear-gradient(180deg, #fff, #faf9ff);
-  overflow: hidden;
-}
-.hp-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  transform: scale(1.02);
-  transition: transform 0.35s ease, filter 0.35s ease;
-  filter: none !important;        /* ensure no accidental dimming */
-  opacity: 1 !important;
-}
-.hp-card:hover .hp-media img {
-  transform: scale(1.06);
-  filter: saturate(1.06);
+.hp-badge--ko {
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
 }
 
-/* Centered hover actions */
-.hp-actions {
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  gap: 12px; opacity: 0; transform: translateY(8px);
-  transition: all 0.25s ease; pointer-events: none;
+.hp-badge--sale {
+  left: auto;
+  right: 10px;
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
 }
-.hp-card:hover .hp-actions { opacity: 1; transform: translateY(0); pointer-events: auto; }
-.hp-action {
-  width: 40px; height: 40px; border-radius: 10px;
-  display: grid; place-items: center;
-  background: #fff; color: #0f172a;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.12);
-  transition: transform .18s ease, background .18s ease, color .18s ease;
-  cursor: pointer;
-}
-.hp-action:hover { transform: translateY(-2px); background: #f8fafc; color: var(--primary, #ec6a84); }
-.hp-action.active { background: #ff5a7a; color: #fff; }
 
-/* Body */
-.hp-body { padding: 14px 14px 18px 14px; }
-/* Product name — normal weight */
+/* -------- CONTENU TEXTE -------- */
+
+.hp-body {
+  padding: 12px 14px 16px 14px;
+}
+
 .hp-title {
   display: block;
-  font-weight: 400;         /* normal, not bold */
+  font-weight: 500;
   font-size: 1rem;
   line-height: 1.35;
   color: #0f172a;
   margin-bottom: 6px;
   text-decoration: none;
 }
+
 .hp-title:hover {
   text-decoration: underline;
-  text-underline-offset: 4px;
+  text-underline-offset: 3px;
 }
 
-/* Product price — bold black text */
-.hp-price {
-  color: #000;              /* black instead of green */
-  font-weight: 700;         /* bold */
+@media (max-width: 576px) {
+  .hp-title {
+    font-size: 0.9rem;
+  }
+}
+
+/* Badges de catégories sous le titre */
+
+.hp-body .badge {
+  font-size: 0.72rem;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+/* -------- PRIX -------- */
+
+.hp-price-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.hp-price-old {
+  text-decoration: line-through;
+  color: #000000;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.hp-price-new {
+  color: #000000;
+  font-weight: 800;
   letter-spacing: 0.2px;
+  font-size: 1.05rem;
 }
 
+/* =========================================================
+   ACTIONS SUR IMAGE (wishlist / voir / ajouter au panier)
+   ========================================================= */
 
-/* Hover action row (3 squares over the image) */
-.hp-actions-row{
-  position:absolute; left:50%; bottom:104px;
-  transform:translateX(-50%) translateY(8px);
-  display:flex; gap:12px; opacity:0; pointer-events:none;
-  transition:all .25s ease; z-index:3;
+.hp-actions-row {
+  position: absolute;
+  left: 50%;
+  bottom: 100px;
+  transform: translateX(-50%) translateY(8px);
+  display: flex;
+  gap: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.25s ease;
+  z-index: 4;
 }
-.hp-card:hover .hp-actions-row{ opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
 
-/* Square icons */
-.hp-action-square{
-  width:56px; height:56px; display:grid; place-items:center; border-radius:12px;
-  background:#fff; color:#0f172a; border:1px solid rgba(15,23,42,.12);
-  box-shadow:0 10px 24px rgba(16,24,40,.14);
-  transition:transform .18s ease, background .18s ease, color .18s ease;
+.hp-card:hover .hp-actions-row {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
 }
-.hp-action-square:hover{ transform: translateY(-2px); background:#f8fafc; }
 
-/* Big dark add-to-cart bar (appears on hover) */
-.hp-addbar{
-  position:absolute; left:50%; bottom:24px;
-  transform:translateX(-50%) translateY(8px);
-  width:calc(100% - 48px); padding:14px 16px; border-radius:12px;
-  font-weight:800; letter-spacing:.2px;
-  display:flex; align-items:center; justify-content:center; gap:10px;
-  background:#111827; color:#fff;
-  border:1px solid rgba(2,6,23,.22);
-  box-shadow:0 16px 36px rgba(2,6,23,.35);
-  opacity:0; pointer-events:none; transition:all .25s ease; z-index:2;
+.hp-action-square {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.14);
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+  cursor: pointer;
 }
-.hp-card:hover .hp-addbar{ opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
-.hp-addbar .mr-2{ margin-right:8px; }
 
-/* ===========================================
-   ADDITIONS: Hero strip + Category tabs + Video
-   =========================================== */
+.hp-action-square:hover {
+  transform: translateY(-2px);
+  background: #f8fafc;
+}
 
-.fw-900 { font-weight: 900; }
+/* Barre sombre “Ajouter au panier” */
 
-/* HERO strip (auto-moving to the right) */
+.hp-addbar {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%) translateY(8px);
+  width: calc(100% - 44px);
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #111827;
+  color: #ffffff;
+  border: 1px solid rgba(2, 6, 23, 0.22);
+  box-shadow: 0 16px 32px rgba(2, 6, 23, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.25s ease;
+  z-index: 3;
+}
+
+.hp-card:hover .hp-addbar {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+/* =========================================================
+   HERO (page d’accueil) – inchangé sauf petits ajustements
+   ========================================================= */
+
 .hero-strip {
-  position: relative; overflow: hidden; height: 360px; background: #111;
+  position: relative;
+  overflow: hidden;
+  height: 340px;
+  background: #111;
 }
-.hero-overlay{
-  position: absolute; inset: 0; z-index: 2;
-  display: grid; place-items: center; text-align:center; color:#fff; padding: 0 16px;
-  background: linear-gradient(90deg, rgba(0,0,0,0.12), rgba(0,0,0,0.00)); /* LIGHT veil */
-  text-shadow: 0 1px 2px rgba(0,0,0,.25);
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: #fff;
+  padding: 0 16px;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.18),
+    rgba(0, 0, 0, 0.0)
+  );
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
-@media (max-width: 768px){
-  .hero-overlay{ background: linear-gradient(90deg, rgba(0,0,0,0.18), rgba(0,0,0,0)); }
-}
+
 .hero-track {
-  position: absolute; inset: 0; display: flex; align-items: center; gap: 0;
-  animation: hero-scroll 40s linear infinite; z-index: 1;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  animation: hero-scroll 40s linear infinite;
+  z-index: 1;
 }
-.hero-tile{
-  height: 100%; width: auto; flex: 0 0 auto; object-fit: cover;
-  opacity: 1 !important; filter: none !important; /* never dim images */
-}
-@keyframes hero-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-/* Category tabs */
-.hp-tabs .nav-tabs { border-bottom: 0; gap: 8px; }
+.hero-tile {
+  height: 100%;
+  width: auto;
+  flex: 0 0 auto;
+  object-fit: cover;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+@keyframes hero-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* =========================================================
+   TABS (boutons catégories ronds)
+   ========================================================= */
+
 .hp-tab {
-  font-weight: 700; letter-spacing: 0.5px; padding: 10px 18px !important;
-  border: 2px solid transparent !important; border-radius: 999px !important;
-  color: #333 !important; background: #f4f5f7 !important;
-}
-.hp-tab.is-active, .hp-tab:hover {
-  color: #0b0b0b !important; background: #eaf7ff !important; border-color: #b9e2ff !important;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: #f4f5f7;
+  color: #333;
+  font-size: 0.88rem;
+  margin: 4px 6px 4px 0;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+    transform 0.15s ease;
 }
 
-/* Skincare video spotlight */
-.video-section {
-  background: linear-gradient(180deg, #f9fafb 0%, #fff 100%);
-  padding: 80px 0;
+.hp-tab.is-active,
+.hp-tab:hover {
+  background: #eaf7ff;
+  color: #111827;
+  border-color: #b9e2ff;
+  transform: translateY(-1px);
 }
-.video-text { text-align: left; }
-.video-title {
-  font-size: clamp(26px, 2.5vw, 36px);
-  font-weight: 800; margin-bottom: 20px; color: #0f172a;
-}
-.video-desc {
-  font-size: 1.1rem; line-height: 1.6; color: #374151; margin-bottom: 28px;
-}
-.video-col { display: flex; justify-content: center; align-items: center; }
-.video-wrapper {
-  position: relative; border-radius: 20px; overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15); background: #000;
-}
-.skincare-video {
-  width: 100%; height: auto; display: block;
-  transition: transform 0.4s ease, filter 0.4s ease;
-}
-.video-wrapper:hover .skincare-video { transform: scale(1.03); filter: brightness(1.05); }
-@media (max-width: 768px) { .video-section { padding: 56px 0; } .video-text { text-align: center; } }
 
-/* Perf */
-@media (hover:hover) {
-  .hp-card, .hp-media img, .hp-actions, .hp-actions-row, .hp-addbar { will-change: transform, opacity; }
-}
-/* ===== Skincare video spotlight ===== */
+/* =========================================================
+   SECTION VIDÉO (home)
+   ========================================================= */
+
 .video-section {
   padding: 56px 0 64px;
   background: linear-gradient(180deg, #ffffff 0%, #f6f8fb 100%);
@@ -218,7 +345,7 @@
 
 .video-text .video-title {
   font-weight: 900;
-  letter-spacing: .2px;
+  letter-spacing: 0.2px;
   margin-bottom: 10px;
   color: #0f172a;
 }
@@ -233,7 +360,7 @@
   position: relative;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 14px 36px rgba(16,24,40,.18);
+  box-shadow: 0 14px 36px rgba(16, 24, 40, 0.18);
   background: #000;
 }
 
@@ -245,234 +372,151 @@
   object-fit: cover;
 }
 
-/* Slightly larger on big screens */
-@media (min-width: 1200px) {
-  .skincare-video { aspect-ratio: 16 / 9; }
+/* =========================================================
+   RANGÉE HORIZONTALE (featured / favoris)
+   ========================================================= */
+
+.hscroll-wrapper {
+  position: relative;
 }
 
-/* =========================================
-   HORIZONTAL STRIP (one line, scrollable)
-   ========================================= */
 .hp-strip {
   display: flex;
   gap: 22px;
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 6px;                 /* a bit of room under cards */
-  scroll-snap-type: x mandatory;       /* nice snapping when scrolling */
-  -webkit-overflow-scrolling: touch;   /* smooth on iOS */
-  scrollbar-width: thin;               /* Firefox */
+  padding: 4px 4px 10px 4px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
+
 .hp-strip::-webkit-scrollbar {
   height: 8px;
 }
+
 .hp-strip::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,.15);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 999px;
 }
+
 .hp-strip::-webkit-scrollbar-track {
   background: transparent;
 }
 
-/* Each card should NOT shrink and should snap into view */
-.hp-card {
-  flex: 0 0 260px;      /* fix the visible width of a card */
+/* largeur des cartes UNIQUEMENT dans la strip horizontale */
+.hp-strip .hp-card {
+  flex: 0 0 230px;
   scroll-snap-align: start;
 }
+
 @media (min-width: 1400px) {
-  .hp-card { flex-basis: 280px; }
+  .hp-strip .hp-card {
+    flex-basis: 260px;
+  }
 }
-@media (max-width: 480px) {
-  .hp-card { flex-basis: 220px; }
+
+@media (max-width: 576px) {
+  .hp-strip .hp-card {
+    flex-basis: 190px;
+  }
 }
+
+/* flèches gauche/droite (HScrollButtons) */
+
 .hscroll-btn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 2;
-  width: 36px; height: 36px;
+  z-index: 5;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
-  border: 1px solid rgba(0,0,0,.15);
-  background: #fff;
-  box-shadow: 0 6px 16px rgba(0,0,0,.12);
-  display: grid; place-items: center;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  display: grid;
+  place-items: center;
   cursor: pointer;
-  opacity: .9;
+  opacity: 0.9;
 }
-.hscroll-btn--left  { left: -12px; }
-.hscroll-btn--right { right: -12px; }
-.hscroll-btn:hover  { opacity: 1; }
+
+.hscroll-btn--left {
+  left: -12px;
+}
+
+.hscroll-btn--right {
+  right: -12px;
+}
+
+.hscroll-btn:hover {
+  opacity: 1;
+}
+
 @media (max-width: 576px) {
-  .hscroll-btn { display: none; } /* hide on very small screens */
-}
-/* ==== drag-to-scroll UX ===== */
-.drag-scroll { cursor: grab; }
-.drag-scroll.is-dragging { cursor: grabbing; user-select: none; }
-
-/* make sure each card stays on one line in the strip */
-.hp-strip .hp-card { flex: 0 0 260px; scroll-snap-align: start; }
-@media (min-width: 1400px){ .hp-strip .hp-card { flex-basis: 280px; } }
-@media (max-width: 480px) { .hp-strip .hp-card { flex-basis: 220px; } }
-
-/* wrapper ensures arrows sit above the row */
-.hscroll-wrapper { position: relative; }
-/* --- Promotion badge --- */
-.hp-badge--promo {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: #ff4da6;
-  color: #fff;
-  font-weight: 700;
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 0.8rem;
-  letter-spacing: 0.3px;
-  z-index: 3;
+  .hscroll-btn {
+    display: none;
+  }
 }
 
-/* --- Price box with both prices --- */
-.hp-pricebox {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-top: 4px;
+/* drag-to-scroll */
+
+.drag-scroll {
+  cursor: grab;
 }
 
-.hp-price-old {
-  text-decoration: line-through;
-  color: #000000;
-  font-size: 0.9rem;
+.drag-scroll.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+/* =========================================================
+   HOMEPAGE – Typo responsive mobile
+   Réduit les gros titres sur téléphone
+   ========================================================= */
+
+@media (max-width: 768px) {
+  /* Hero section height + text size */
+  .hero-strip {
+    height: 260px;
+  }
+
+  .hero-overlay {
+    padding: 0 16px;
+  }
+
+  .display-hero {
+    font-size: 1.7rem;
+    line-height: 1.25;
+  }
+
+  .display-sub {
+    font-size: 0.95rem;
+    line-height: 1.4;
+    max-width: 22rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Section titles on homepage (produits mis en avant / favoris) */
+  .home-section-title {
+    font-size: 1.5rem;
+    line-height: 1.25;
+  }
+
+  /* Small extra spacing so the headings don’t look “collés” */
+  .home-section-title + .row,
+  .home-section-title + .d-flex {
+    margin-top: 0.25rem;
+  }
 }
 
-.hp-price-new {
-  color: #000000; /* pinkish */
-  font-weight: 700;
-  font-size: 1.05rem;
-}
-/* ===== badges ===== */
-.hp-badge {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 2;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  backdrop-filter: blur(4px);
-}
+/* Encore plus petit sur très petit écran (anciens téléphones) */
+@media (max-width: 480px) {
+  .display-hero {
+    font-size: 1.5rem;
+  }
 
-/* SALE badge (top-right) */
-.hp-badge--sale {
-  left: auto;
-  right: 12px;
-  color: #b91c1c;
-  background: #fee2e2;
-  border: 1px solid #fecaca;
-}
-
-/* ===== card price styles ===== */
-.hp-price-wrap {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.hp-price-old {
-  text-decoration: line-through;
-  color: #000000; /* grey */
-  font-weight: 500;
-}
-.hp-price-new {
-  color: #000;     /* black, bold as requested earlier */
-  font-weight: 700;
-  letter-spacing: 0.2px;
-}
-
-/* ===== details page price styles (if not already in your CSS) ===== */
-.pd-price-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.pd-price-old {
-  text-decoration: line-through;
-  color: #000000;
-  font-weight: 500;
-  font-size: 1.05rem;
-}
-.pd-price-new {
-  font-size: 1.35rem;
-  color: #111;
-  font-weight: 800;
-}
-.pd-sale-badge {
-  background: #fee2e2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-weight: 800;
-  font-size: 0.85rem;
-  line-height: 1;
-}
-/* ----- PRICE on cards ----- */
-.hp-price-wrap {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.hp-price-old {
-  text-decoration: line-through;
-  color: #000000; /* grey */
-  font-weight: 500;
-}
-.hp-price-new {
-  color: #000000;       /* rose pour le prix promo */
-  font-weight: 800;
-  letter-spacing: 0.2px;
-}
-
-/* SALE badge (top-right) */
-.hp-badge--sale {
-  left: auto;
-  right: 12px;
-  color: #b91c1c;
-  background: #fee2e2;
-  border: 1px solid #fecaca;
-}
-
-/* ----- DETAILS page price block ----- */
-.pd-price-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.pd-price-old {
-  text-decoration: line-through;
-  color: #000000;
-  font-weight: 500;
-  font-size: 1.05rem;
-}
-.pd-price-new {
-  font-size: 1.4rem;
-  color: #000000; /* rose visible */
-  font-weight: 800;
-}
-.pd-sale-badge {
-  background: #fee2e2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-weight: 800;
-  font-size: 0.85rem;
-  line-height: 1;
-}
-.pd-sale-badge--media {
-  position: absolute;
-  top: 12px;
-  left: 12px;
+  .home-section-title {
+    font-size: 1.3rem;
+  }
 }

@@ -1,3 +1,4 @@
+// src/pages/ProductsListPage.js
 import React, { useEffect, useMemo, useState } from "react";
 import { Container, Row, Col, Spinner, Alert, Form } from "react-bootstrap";
 import api from "../api";
@@ -5,11 +6,19 @@ import HomeProductCard from "../components/HomeProductCard";
 import "../components/HomeProducts.css";
 
 const CATS = [
-  { key: "face",    label: "VISAGE"  },
-  { key: "lips",    label: "LÈVRES"  },
-  { key: "eyes",    label: "YEUX"    },
-  { key: "eyebrow", label: "SOURCILS"},
-  { key: "hair",    label: "CHEVEUX" },
+  { key: "face",              label: "VISAGE" },
+  { key: "lips",              label: "LÈVRES" },
+  { key: "eyes",              label: "YEUX" },
+  { key: "eyebrow",           label: "SOURCILS" },
+  { key: "hair",              label: "CHEVEUX" },
+  { key: "body",              label: "CORPS" },
+  { key: "packs",             label: "PACKS" },
+  { key: "acne",              label: "ACNÉ" },
+  { key: "hyper_pigmentation",label: "HYPER PIGMENTATION" },
+  { key: "brightening",       label: "ÉCLAIRCISSEMENT" },
+  { key: "dry_skin",          label: "PEAU SÈCHE" },
+  { key: "combination_oily",  label: "PEAU MIXTE/GRASSE" },
+  { key: "other",             label: "AUTRES" },
 ];
 
 export default function ProductsListPage() {
@@ -17,27 +26,46 @@ export default function ProductsListPage() {
   const [error, setError]     = useState(null);
   const [items, setItems]     = useState([]);
 
-  const [q, setQ] = useState("");
-  const [cat, setCat] = useState("");
+  const [q, setQ]         = useState("");
+  const [cat, setCat]     = useState("");
+  const [brand, setBrand] = useState("");
 
-  const filtered = useMemo(() => {
-    const s = (q || "").trim().toLowerCase();
-    return items.filter(p => {
-      const okCat = !cat || (p.category || "").toLowerCase() === cat;
-      if (!s) return okCat;
-      const hay = `${p.name || ""} ${p.description || ""}`.toLowerCase();
-      return okCat && hay.includes(s);
-    });
-  }, [items, q, cat]);
+  // ------- Read query string (brand, category/type, search or searchTerm) ------
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const b = p.get("brand") || "";
+    const c = (p.get("category") || p.get("type") || "").toLowerCase();
+    const s = p.get("search") || p.get("searchTerm") || "";
+    setBrand(b);
+    setCat(c);
+    setQ(s);
+  }, []);
+  // -----------------------------------------------------------------------------
 
+  // Keep URL in sync as user types (so you can share/refresh)
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (brand) p.set("brand", brand);
+    if (cat)   p.set("type", cat); // on conserve dans l'URL pour partage
+    if (q)     p.set("search", q);
+    const qs = p.toString();
+    const url = qs ? `/products?${qs}` : "/products";
+    window.history.replaceState(null, "", url);
+  }, [brand, cat, q]);
+
+  // Server fetch; on laisse le backend filtrer par marque + recherche,
+  // mais PAS par catégorie secondaire (acne, dry_skin, etc.).
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError(null);
     (async () => {
       try {
-        // IMPORTANT: use the shared api client (baseURL already includes /api)
-        const { data } = await api.get("/products/");
+        const params = {};
+        // ❌ plus de params.type = cat
+        if (brand) params.brand  = brand;
+        if (q)     params.search = q;
+        const { data } = await api.get("/products/", { params });
         if (!alive) return;
         setItems(Array.isArray(data) ? data : []);
       } catch (e) {
@@ -48,7 +76,28 @@ export default function ProductsListPage() {
       }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [brand, q]); // 👈 cat n'est plus envoyée au backend
+
+  // Client-side final filter: category can come from `category` OR `categories[]`
+  const filtered = useMemo(() => {
+    const s = (q || "").trim().toLowerCase();
+    const selected = (cat || "").toLowerCase();
+
+    return items.filter((p) => {
+      const primary = (p.category || "").toLowerCase();
+      const extra = Array.isArray(p.categories)
+        ? p.categories.map((c) => (c || "").toLowerCase())
+        : [];
+
+      const allCats = primary ? [primary, ...extra] : extra;
+      const okCat = !selected || allCats.includes(selected);
+
+      if (!s) return okCat;
+
+      const name = (p.name || "").toLowerCase();
+      return okCat && name.includes(s); // name-only filter
+    });
+  }, [items, q, cat]);
 
   return (
     <Container className="py-5">
@@ -58,12 +107,20 @@ export default function ProductsListPage() {
         </Col>
         <Col md="6">
           <Form.Control
-            placeholder="Rechercher un produit..."
+            placeholder="Rechercher un produit (par nom)…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </Col>
       </Row>
+
+      <div className="mb-2">
+        {brand ? (
+          <small className="text-muted">
+            Marque sélectionnée : <b>{brand}</b>
+          </small>
+        ) : null}
+      </div>
 
       <div className="mb-3 d-flex flex-wrap gap-2">
         <button
@@ -95,7 +152,9 @@ export default function ProductsListPage() {
       {!loading && !error && (
         filtered.length ? (
           <div className="hp-grid">
-            {filtered.map((p) => <HomeProductCard key={p.id} product={p} />)}
+            {filtered.map((p) => (
+              <HomeProductCard key={p.id} product={p} />
+            ))}
           </div>
         ) : (
           <div className="text-center text-muted py-5 font-sans">
