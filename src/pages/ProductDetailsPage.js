@@ -13,6 +13,23 @@ import {
 } from "../constants";
 import { productImage } from "../utils/media";
 
+// ✅ Category labels mapping
+const CATEGORY_LABELS = {
+  face: "Visage",
+  lips: "Lèvres",
+  eyes: "Yeux",
+  eyebrow: "Sourcils",
+  hair: "Cheveux",
+  body: "Corps",
+  packs: "Packs",
+  acne: "Acné",
+  hyper_pigmentation: "Hyper pigmentation",
+  brightening: "Éclaircissement",
+  dry_skin: "Peau sèche",
+  combination_oily: "Peau mixte/grasse",
+  other: "Autres",
+};
+
 function ProductDetailsPage({ history, match }) {
   const dispatch = useDispatch();
   const cart = useCart();
@@ -43,12 +60,10 @@ function ProductDetailsPage({ history, match }) {
     [variants, variantId]
   );
 
-  // promo on biggest variant (backend)
   const promoVariantId = product?.promo_variant_id || null;
   const hasDiscount = !!product?.has_discount && !!promoVariantId;
   const percent = Number(product?.discount_percent || 0);
 
-  // auto-select variant
   useEffect(() => {
     if (!variants.length) return;
     if (hasDiscount && promoVariantId && variantId == null) {
@@ -64,20 +79,14 @@ function ProductDetailsPage({ history, match }) {
     }
   }, [variants, hasDiscount, promoVariantId, variantId]);
 
-  // compute unit price
   const unitPrice = (() => {
     if (activeVariant) {
-      if (
-        hasDiscount &&
-        String(activeVariant.id) === String(promoVariantId)
-      ) {
+      if (hasDiscount && String(activeVariant.id) === String(promoVariantId)) {
         return Number(product?.promo_variant_new_price || activeVariant.price);
       }
       return Number(activeVariant.price || 0);
     }
-    if (hasDiscount) {
-      return Number(product?.new_price || product?.price || 0);
-    }
+    if (hasDiscount) return Number(product?.new_price || product?.price || 0);
     return Number(product?.price || 0);
   })();
 
@@ -123,6 +132,21 @@ function ProductDetailsPage({ history, match }) {
     dispatch({ type: DELETE_PRODUCT_RESET });
   }
 
+  // Build full category list from `categories[]` or fallback to single `category`
+  const rawCats =
+    Array.isArray(product?.categories) && product.categories.length
+      ? product.categories
+      : product?.category
+      ? [product.category]
+      : [];
+
+  const prettyCats = rawCats
+    .map((slug) => {
+      const key = String(slug || "").toLowerCase();
+      return CATEGORY_LABELS[key] || slug;
+    })
+    .filter(Boolean);
+
   return (
     <div>
       <Modal show={show} onHide={() => setShow(false)}>
@@ -165,10 +189,7 @@ function ProductDetailsPage({ history, match }) {
             <Col lg={6}>
               <div className="pd-media">
                 <div className="pd-media-frame">
-                  <img
-                    src={productImage(product)}
-                    alt={product?.name}
-                  />
+                  <img src={productImage(product)} alt={product?.name} />
                   {hasDiscount &&
                     String(variantId) === String(promoVariantId) && (
                       <span className="pd-sale-badge pd-sale-badge--media">
@@ -183,12 +204,21 @@ function ProductDetailsPage({ history, match }) {
               <div className="pd-card mb-3">
                 <h2 className="pd-title">{product?.name}</h2>
 
+                {/* Catégories */}
                 <div className="pd-subtle mb-3">
-                  {product?.category ? (
-                    <>
-                      Catégorie : <b>{product.category}</b>
-                    </>
-                  ) : null}
+                  Catégorie(s)&nbsp;:
+                  {prettyCats.length ? (
+                    <span>
+                      {" "}
+                      {prettyCats.map((label, i) => (
+                        <span key={i} className="pd-chip-small mr-2">
+                          {label}
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    <b> — </b>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -198,13 +228,16 @@ function ProductDetailsPage({ history, match }) {
                     </span>
                   ) : (
                     <span className="pd-chip pd-chip--ko">
-                      <i className="fas fa-times-circle" /> Out of stock
+                      <i className="fas fa-times-circle" /> Hors stock
                     </span>
                   )}
                 </div>
 
                 {product?.description && (
-                  <p className="pd-subtle" style={{ lineHeight: 1.7 }}>
+                  <p
+                    className="pd-subtle"
+                    style={{ lineHeight: 1.7 }}
+                  >
                     {product.description}
                   </p>
                 )}
@@ -247,7 +280,8 @@ function ProductDetailsPage({ history, match }) {
                   <div className="pd-price-wrap">
                     {hasDiscount &&
                     activeVariant &&
-                    String(activeVariant.id) === String(promoVariantId) ? (
+                    String(activeVariant.id) ===
+                      String(promoVariantId) ? (
                       <>
                         <span className="pd-price-old">
                           {fmtMAD(product.promo_variant_old_price)}

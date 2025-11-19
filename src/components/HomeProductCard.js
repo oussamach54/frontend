@@ -1,3 +1,4 @@
+// src/components/HomeProductCard.jsx
 import React from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -6,6 +7,22 @@ import { useCart } from "../cart/CartProvider";
 import { productImage } from "../utils/media";
 import "./HomeProducts.css";
 
+const CAT_LABELS = {
+  face: "VISAGE",
+  lips: "LÈVRES",
+  eyes: "YEUX",
+  eyebrow: "SOURCILS",
+  hair: "CHEVEUX",
+  body: "CORPS",
+  packs: "PACKS",
+  acne: "ACNÉ",
+  hyper_pigmentation: "HYPER PIGMENTATION",
+  brightening: "ÉCLAIRCISSEMENT",
+  dry_skin: "PEAU SÈCHE",
+  combination_oily: "PEAU MIXTE/GRASSE",
+  other: "AUTRES",
+};
+
 export default function HomeProductCard({ product }) {
   const id = product.id ?? product._id;
   const dispatch = useDispatch();
@@ -13,7 +30,6 @@ export default function HomeProductCard({ product }) {
 
   const img = productImage(product);
 
-  // promo only on biggest variant
   const promoVariantId = product.promo_variant_id;
   const hasDiscount = !!product?.has_discount && !!promoVariantId;
   const promoVariant = (product.variants || []).find(
@@ -48,10 +64,19 @@ export default function HomeProductCard({ product }) {
     dispatch(toggleWishlist(id));
   };
 
+  const primary = (product.category || "").trim();
+  const extrasRaw = Array.isArray(product.categories) ? product.categories : [];
+  const extras = extrasRaw.filter(
+    (c) => c && String(c).trim().toLowerCase() !== primary.toLowerCase()
+  );
+  const chips = primary ? [primary, ...extras] : extras;
+
+  const isOutOfStock = !product.stock;
+
   return (
     <article className="hp-card">
       {!product.stock && (
-        <span className="hp-badge hp-badge--ko">Out of stock</span>
+        <span className="hp-badge hp-badge--ko">Rupture de stock</span>
       )}
       {hasDiscount && (
         <span className="hp-badge hp-badge--sale">-{percent}%</span>
@@ -70,17 +95,19 @@ export default function HomeProductCard({ product }) {
         >
           <i className="fas fa-heart" />
         </button>
-        <Link
-          className="hp-action-square"
-          to={`/product/${id}/`}
-          title="Voir le produit"
-        >
+        <Link className="hp-action-square" to={`/product/${id}/`} title="Voir le produit">
           <i className="fas fa-eye" />
         </Link>
       </div>
 
-      <button type="button" className="hp-addbar" onClick={addToCart}>
-        <i className="fas fa-shopping-bag mr-2" /> AJOUTER AU PANIER
+      <button
+        type="button"
+        className={`hp-addbar ${isOutOfStock ? "is-disabled" : ""}`}
+        onClick={isOutOfStock ? undefined : addToCart}
+        disabled={isOutOfStock}
+      >
+        <i className="fas fa-shopping-bag mr-2" />
+        {isOutOfStock ? "RUPTURE DE STOCK" : "AJOUTER AU PANIER"}
       </button>
 
       <div className="hp-body">
@@ -88,6 +115,26 @@ export default function HomeProductCard({ product }) {
           {product.name}
           {hasDiscount && promoVariant ? ` — ${promoVariant.label}` : ""}
         </Link>
+
+        {chips.length > 0 && (
+          <div className="mt-1 d-flex flex-wrap" style={{ gap: 6 }}>
+            {chips.map((c) => {
+              const key = String(c);
+              const slug = key.toLowerCase();
+              const label = CAT_LABELS[slug] || key;
+              return (
+                <span
+                  key={key}
+                  className="badge badge-light"
+                  style={{ border: "1px solid #eee", fontWeight: 500 }}
+                  title={label}
+                >
+                  {label}
+                </span>
+              );
+            })}
+          </div>
+        )}
 
         <div className="hp-price-wrap">
           {hasDiscount && (
