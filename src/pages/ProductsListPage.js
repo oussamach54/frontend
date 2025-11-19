@@ -30,7 +30,6 @@ export default function ProductsListPage() {
   const [brand, setBrand] = useState("");
 
   // ------- Read query string (brand, category/type, search or searchTerm) ------
-<<<<<<< HEAD
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     const b = p.get("brand") || "";
@@ -104,75 +103,6 @@ const filtered = useMemo(() => {
   });
 }, [items, q, cat]);
 
-=======
-  useEffect(() => {
-    const p = new URLSearchParams(window.location.search);
-    const b = p.get("brand") || "";
-    const c = (p.get("category") || p.get("type") || "").toLowerCase();
-    const s = p.get("search") || p.get("searchTerm") || "";
-    setBrand(b);
-    setCat(c);
-    setQ(s);
-  }, []);
-  // -----------------------------------------------------------------------------
-
-  // Keep URL in sync as user types (so you can share/refresh)
-  useEffect(() => {
-    const p = new URLSearchParams();
-    if (brand) p.set("brand", brand);
-    if (cat)   p.set("type", cat); // on conserve dans l'URL pour partage
-    if (q)     p.set("search", q);
-    const qs = p.toString();
-    const url = qs ? `/products?${qs}` : "/products";
-    window.history.replaceState(null, "", url);
-  }, [brand, cat, q]);
-
-  // Server fetch; on laisse le backend filtrer par marque + recherche,
-  // mais PAS par catégorie secondaire (acne, dry_skin, etc.).
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    setError(null);
-    (async () => {
-      try {
-        const params = {};
-        // ❌ plus de params.type = cat
-        if (brand) params.brand  = brand;
-        if (q)     params.search = q;
-        const { data } = await api.get("/products/", { params });
-        if (!alive) return;
-        setItems(Array.isArray(data) ? data : []);
-      } catch (e) {
-        if (!alive) return;
-        setError(e?.response?.data?.detail || e.message);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => { alive = false; };
-  }, [brand, q]); // 👈 cat n'est plus envoyée au backend
-
-  // Client-side final filter: category can come from `category` OR `categories[]`
-  const filtered = useMemo(() => {
-    const s = (q || "").trim().toLowerCase();
-    const selected = (cat || "").toLowerCase();
-
-    return items.filter((p) => {
-      const primary = (p.category || "").toLowerCase();
-      const extra = Array.isArray(p.categories)
-        ? p.categories.map((c) => (c || "").toLowerCase())
-        : [];
-
-      const allCats = primary ? [primary, ...extra] : extra;
-      const okCat = !selected || allCats.includes(selected);
-
-      if (!s) return okCat;
-
-      const name = (p.name || "").toLowerCase();
-      return okCat && name.includes(s); // name-only filter
-    });
-  }, [items, q, cat]);
->>>>>>> feat/frontend-sync-
 
   return (
     <Container className="py-5">

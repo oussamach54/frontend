@@ -64,31 +64,19 @@ export default function HomeProductCard({ product }) {
     dispatch(toggleWishlist(id));
   };
 
-<<<<<<< HEAD
   // If your backend still returns categories array from older data, show them;
   // otherwise this gracefully shows only the single primary category.
-=======
->>>>>>> feat/frontend-sync-
   const primary = (product.category || "").trim();
   const extrasRaw = Array.isArray(product.categories) ? product.categories : [];
   const extras = extrasRaw.filter(
     (c) => c && String(c).trim().toLowerCase() !== primary.toLowerCase()
   );
   const chips = primary ? [primary, ...extras] : extras;
-<<<<<<< HEAD
-=======
-
-  const isOutOfStock = !product.stock;
->>>>>>> feat/frontend-sync-
 
   return (
     <article className="hp-card">
       {!product.stock && (
-<<<<<<< HEAD
         <span className="hp-badge hp-badge--ko">Out of stock</span>
-=======
-        <span className="hp-badge hp-badge--ko">Rupture de stock</span>
->>>>>>> feat/frontend-sync-
       )}
       {hasDiscount && (
         <span className="hp-badge hp-badge--sale">-{percent}%</span>
