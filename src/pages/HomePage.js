@@ -1,4 +1,5 @@
 // src/pages/HomePage.js
+//ok
 import React, { useEffect, useMemo, useState } from "react";
 import { Container, Row, Col, Button, Spinner, Alert, Nav } from "react-bootstrap";
 import api from "../api";

@@ -1,4 +1,5 @@
 // frontend/src/pages/CheckoutPage.js
+//ok
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert } from "react-bootstrap";
 import api from "../api";
