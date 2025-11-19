@@ -35,5 +35,8 @@ export function productImage(product) {
 
 /** Legacy alias used in older imports */
 export const resolveImageURL = resolveMedia;
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> feat/frontend-sync-

@@ -1,3 +1,4 @@
+// src/components/HomeProductCard.jsx
 import React from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -63,19 +64,31 @@ export default function HomeProductCard({ product }) {
     dispatch(toggleWishlist(id));
   };
 
+<<<<<<< HEAD
   // If your backend still returns categories array from older data, show them;
   // otherwise this gracefully shows only the single primary category.
+=======
+>>>>>>> feat/frontend-sync-
   const primary = (product.category || "").trim();
   const extrasRaw = Array.isArray(product.categories) ? product.categories : [];
   const extras = extrasRaw.filter(
     (c) => c && String(c).trim().toLowerCase() !== primary.toLowerCase()
   );
   const chips = primary ? [primary, ...extras] : extras;
+<<<<<<< HEAD
+=======
+
+  const isOutOfStock = !product.stock;
+>>>>>>> feat/frontend-sync-
 
   return (
     <article className="hp-card">
       {!product.stock && (
+<<<<<<< HEAD
         <span className="hp-badge hp-badge--ko">Out of stock</span>
+=======
+        <span className="hp-badge hp-badge--ko">Rupture de stock</span>
+>>>>>>> feat/frontend-sync-
       )}
       {hasDiscount && (
         <span className="hp-badge hp-badge--sale">-{percent}%</span>
@@ -99,8 +112,14 @@ export default function HomeProductCard({ product }) {
         </Link>
       </div>
 
-      <button type="button" className="hp-addbar" onClick={addToCart}>
-        <i className="fas fa-shopping-bag mr-2" /> AJOUTER AU PANIER
+      <button
+        type="button"
+        className={`hp-addbar ${isOutOfStock ? "is-disabled" : ""}`}
+        onClick={isOutOfStock ? undefined : addToCart}
+        disabled={isOutOfStock}
+      >
+        <i className="fas fa-shopping-bag mr-2" />
+        {isOutOfStock ? "RUPTURE DE STOCK" : "AJOUTER AU PANIER"}
       </button>
 
       <div className="hp-body">

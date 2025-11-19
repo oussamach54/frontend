@@ -302,6 +302,7 @@ a:focus-visible, button:focus-visible, .dropdown-toggle:focus-visible{
 @media (max-width:480px){
   .pd .pd-variants .pd-variant-pill{ padding:9px 16px !important; }
 }
+<<<<<<< HEAD
 /* Skincare video styling */
 .video-wrapper {
   position: relative;
@@ -330,3 +331,7 @@ a:focus-visible, button:focus-visible, .dropdown-toggle:focus-visible{
 .skincare-video::-webkit-media-controls {
   display: none !important;
 }
+=======
+
+
+>>>>>>> feat/frontend-sync-

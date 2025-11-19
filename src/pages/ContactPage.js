@@ -10,7 +10,11 @@ const ADMIN_CONTACT = {
   whatsappPretty: "+212 6 89 39 85 38",    // how you want to display it
   email: "labshaay@gmail.com",
   instagram: "https://instagram.com/miniglowbyshay",
+<<<<<<< HEAD
   tiktok: "https://www.tiktok.com/@miniglowby_shay",
+=======
+  tiktok: "https://www.tiktok.com/@miniglowbyshay",
+>>>>>>> feat/frontend-sync-
 };
 
 export default function ContactPage() {
