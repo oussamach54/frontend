@@ -52,50 +52,57 @@ export default function ProductsListPage() {
     window.history.replaceState(null, "", url);
   }, [brand, cat, q]);
 
-  // Server fetch; let backend prefilter by brand/category/search
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    setError(null);
-    (async () => {
-      try {
-        const params = {};
-        if (cat)   params.type   = cat;      // backend supports ?type=
-        if (brand) params.brand  = brand;    // backend supports ?brand=
-        if (q)     params.search = q;        // backend supports ?search=
-        const { data } = await api.get("/products/", { params });
-        if (!alive) return;
-        setItems(Array.isArray(data) ? data : []);
-      } catch (e) {
-        if (!alive) return;
-        setError(e?.response?.data?.detail || e.message);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => { alive = false; };
-  }, [cat, brand, q]);
+
+// Server fetch; let backend pré-filtrer seulement par marque (optionnel)
+useEffect(() => {
+  let alive = true;
+  setLoading(true);
+  setError(null);
+  (async () => {
+    try {
+      const params = {};
+      // ❌ NE PLUS ENVOYER params.type = cat
+      if (brand) params.brand = brand; // ok : filtrage serveur par marque
+
+      // ❌ soit tu enlèves search ici et tu filtres uniquement côté client…
+      // if (q) params.search = q;
+
+      const { data } = await api.get("/products/", { params });
+      if (!alive) return;
+      setItems(Array.isArray(data) ? data : []);
+    } catch (e) {
+      if (!alive) return;
+      setError(e?.response?.data?.detail || e.message);
+    } finally {
+      if (alive) setLoading(false);
+    }
+  })();
+  return () => {
+    alive = false;
+  };
+}, [brand /* , q, cat */]);  // cat n’est plus dans les dépendances pour l’appel API
 
   // Client-side final filter: category can come from `category` OR `categories[]`
-  const filtered = useMemo(() => {
-    const s = (q || "").trim().toLowerCase();
-    const selected = (cat || "").toLowerCase();
+const filtered = useMemo(() => {
+  const s = (q || "").trim().toLowerCase();
+  const selected = (cat || "").toLowerCase();
 
-    return items.filter((p) => {
-      const primary = (p.category || "").toLowerCase();
-      const extra = Array.isArray(p.categories)
-        ? p.categories.map((c) => (c || "").toLowerCase())
-        : [];
+  return items.filter((p) => {
+    const primary = (p.category || "").toLowerCase();
+    const extra = Array.isArray(p.categories)
+      ? p.categories.map((c) => (c || "").toLowerCase())
+      : [];
 
-      const allCats = primary ? [primary, ...extra] : extra;
-      const okCat = !selected || allCats.includes(selected);
+    const allCats = primary ? [primary, ...extra] : extra;
+    const okCat = !selected || allCats.includes(selected);
 
-      if (!s) return okCat;
+    if (!s) return okCat;
 
-      const name = (p.name || "").toLowerCase();
-      return okCat && name.includes(s); // name-only filter
-    });
-  }, [items, q, cat]);
+    const name = (p.name || "").toLowerCase();
+    return okCat && name.includes(s); // filtre texte
+  });
+}, [items, q, cat]);
+
 
   return (
     <Container className="py-5">
