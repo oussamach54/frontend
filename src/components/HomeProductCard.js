@@ -1,5 +1,4 @@
 // src/components/HomeProductCard.jsx
-//ok
 import React from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -47,6 +46,19 @@ export default function HomeProductCard({ product }) {
 
   const percent = Number(product?.discount_percent || 0);
 
+  // ---------- STOCK LOGIC ----------
+  const variants = Array.isArray(product.variants) ? product.variants : [];
+  const hasVariants = variants.length > 0;
+  const hasVariantInStock = hasVariants
+    ? variants.some((v) => v.in_stock)
+    : false;
+
+  // Si le produit a des variantes: il est en rupture si AUCUNE variante n’est en stock
+  // Sinon: on se base sur product.stock
+  const isOutOfStock = hasVariants
+    ? !hasVariantInStock
+    : !product.stock;
+
   const addToCart = () =>
     cart.addItem(
       {
@@ -76,14 +88,18 @@ export default function HomeProductCard({ product }) {
 
   return (
     <article className="hp-card">
-      {!product.stock && (
-        <span className="hp-badge hp-badge--ko">Out of stock</span>
+      {isOutOfStock && (
+        <span className="hp-badge hp-badge--ko">Rupture de stock</span>
       )}
       {hasDiscount && (
         <span className="hp-badge hp-badge--sale">-{percent}%</span>
       )}
 
-      <Link to={`/product/${id}/`} className="hp-media" aria-label={product.name}>
+      <Link
+        to={`/product/${id}/`}
+        className="hp-media"
+        aria-label={product.name}
+      >
         <img src={img} alt={product.name} />
       </Link>
 
@@ -96,7 +112,11 @@ export default function HomeProductCard({ product }) {
         >
           <i className="fas fa-heart" />
         </button>
-        <Link className="hp-action-square" to={`/product/${id}/`} title="Voir le produit">
+        <Link
+          className="hp-action-square"
+          to={`/product/${id}/`}
+          title="Voir le produit"
+        >
           <i className="fas fa-eye" />
         </Link>
       </div>
@@ -147,5 +167,4 @@ export default function HomeProductCard({ product }) {
     </article>
   );
 }
-
 
