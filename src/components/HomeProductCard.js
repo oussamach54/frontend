@@ -1,4 +1,4 @@
-// src/components/HomeProductCard.jsx
+// src/components/HomeProductCard.js
 import React from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -46,18 +46,8 @@ export default function HomeProductCard({ product }) {
 
   const percent = Number(product?.discount_percent || 0);
 
-  // ---------- STOCK LOGIC ----------
-  const variants = Array.isArray(product.variants) ? product.variants : [];
-  const hasVariants = variants.length > 0;
-  const hasVariantInStock = hasVariants
-    ? variants.some((v) => v.in_stock)
-    : false;
-
-  // Si le produit a des variantes: il est en rupture si AUCUNE variante n’est en stock
-  // Sinon: on se base sur product.stock
-  const isOutOfStock = hasVariants
-    ? !hasVariantInStock
-    : !product.stock;
+  // ✅ rupture de stock: si stock === false ➜ on désactive le bouton
+  const isOutOfStock = !product.stock;
 
   const addToCart = () =>
     cart.addItem(
@@ -77,8 +67,7 @@ export default function HomeProductCard({ product }) {
     dispatch(toggleWishlist(id));
   };
 
-  // If your backend still returns categories array from older data, show them;
-  // otherwise this gracefully shows only the single primary category.
+  // gérer les catégories (slug principal + liste)
   const primary = (product.category || "").trim();
   const extrasRaw = Array.isArray(product.categories) ? product.categories : [];
   const extras = extrasRaw.filter(
@@ -88,8 +77,8 @@ export default function HomeProductCard({ product }) {
 
   return (
     <article className="hp-card">
-      {isOutOfStock && (
-        <span className="hp-badge hp-badge--ko">Rupture de stock</span>
+      {!product.stock && (
+        <span className="hp-badge hp-badge--ko">Out of stock</span>
       )}
       {hasDiscount && (
         <span className="hp-badge hp-badge--sale">-{percent}%</span>
@@ -159,9 +148,13 @@ export default function HomeProductCard({ product }) {
 
         <div className="hp-price-wrap">
           {hasDiscount && (
-            <span className="hp-price-old">{oldDisplay.toFixed(2)} MAD</span>
+            <span className="hp-price-old">
+              {oldDisplay.toFixed(2)} MAD
+            </span>
           )}
-          <span className="hp-price-new">{newDisplay.toFixed(2)} MAD</span>
+          <span className="hp-price-new">
+            {newDisplay.toFixed(2)} MAD
+          </span>
         </div>
       </div>
     </article>
