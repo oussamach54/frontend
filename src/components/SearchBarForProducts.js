@@ -37,7 +37,3 @@ function SearchBarForProducts() {
 }
 
 export default SearchBarForProducts;
-<<<<<<< HEAD
-
-=======
->>>>>>> feat/frontend-sync-

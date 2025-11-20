@@ -29,7 +29,3 @@ function Product({ product = {} }) {
 }
 
 export default Product;
-<<<<<<< HEAD
-
-=======
->>>>>>> feat/frontend-sync-

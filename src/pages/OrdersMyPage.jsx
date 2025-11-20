@@ -69,7 +69,3 @@ export default function OrdersMyPage() {
     </Container>
   );
 }
-<<<<<<< HEAD
-
-=======
->>>>>>> feat/frontend-sync-
