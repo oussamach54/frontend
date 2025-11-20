@@ -116,8 +116,7 @@ export default function HomePage() {
             Bienvenue sur Miniglow by Shay
           </h1>
           <p className="display-sub lead-tight font-sans mb-4">
-            Des routines sûres et efficaces pour hydrater, illuminer et réparer la barrière de votre peau — livrées rapidement partout au Maroc.
-          </p>
+              “MiniGlow by Shay – Décants de cosmétiques originaux pour briller chaque jour”.          </p>
           <Button size="lg" variant="light" href="/products">
             Découvrir nos produits
           </Button>
@@ -137,7 +136,7 @@ export default function HomePage() {
       <Container className="py-5">
         <Row className="align-items-center mb-3">
           <Col>
-            <h2 className="m-0 font-display fw-700">Produits mis en avant cette semaine</h2>
+            <h2 className="m-0 font-display fw-700">Nouveautés semaine</h2>
           </Col>
           <Col className="text-right">
             <Button variant="outline-secondary" size="sm" href="/products">
