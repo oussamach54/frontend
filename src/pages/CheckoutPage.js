@@ -1,5 +1,5 @@
 // frontend/src/pages/CheckoutPage.js
-//ok
+// ok
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert } from "react-bootstrap";
 import api from "../api";
@@ -7,6 +7,7 @@ import { useCart } from "../cart/CartProvider";
 import { SHOP } from "../config/shop";
 import { createOrder } from "../apiOrders";
 import { useHistory } from "react-router-dom";
+import { useSelector } from "react-redux"; // ⭐ NEW
 import "./checkout.css";
 
 /** Fallback if API is unreachable */
@@ -43,6 +44,7 @@ async function tryUrls(calls) {
 export default function CheckoutPage() {
   const history = useHistory();
   const { items, totals, clear } = useCart();
+  const { userInfo } = useSelector((s) => s.userLoginReducer || {}); // ⭐ NEW
 
   // contact + adresse
   const [email, setEmail] = useState("");
@@ -89,10 +91,9 @@ export default function CheckoutPage() {
                     { credentials: "omit" }
                   );
                   if (!res.ok)
-                    throw Object.assign(
-                      new Error(`HTTP ${res.status}`),
-                      { response: { status: res.status } }
-                    );
+                    throw Object.assign(new Error(`HTTP ${res.status}`), {
+                      response: { status: res.status },
+                    });
                   const json = await res.json();
                   return {
                     data: json,
@@ -231,9 +232,17 @@ export default function CheckoutPage() {
       const wa = buildWhatsAppUrl(order);
       window.open(wa, "_blank", "noopener,noreferrer");
 
-      // 3) Clear cart + redirect to order page
+      // 3) Clear cart
       clear();
-      history.replace(`/order/${order.id}/`);
+
+      // 4) Redirect:
+      //    - logged in → /order/:id/
+      //    - guest     → home page
+      if (userInfo) {
+        history.replace(`/order/${order.id}/`);
+      } else {
+        history.replace("/"); // or "/thank-you" if you create that page
+      }
     } catch (e) {
       setErr(
         e?.response?.data?.detail ||
@@ -251,45 +260,30 @@ export default function CheckoutPage() {
         <h2 className="co-title">Contact</h2>
         <div className="co-field">
           <label>E-mail ou numéro de portable</label>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
 
         <h2 className="co-title">Livraison</h2>
         <div className="co-grid-2">
           <div className="co-field">
             <label>Prénom (optionnel)</label>
-            <input
-              value={first}
-              onChange={(e) => setFirst(e.target.value)}
-            />
+            <input value={first} onChange={(e) => setFirst(e.target.value)} />
           </div>
           <div className="co-field">
             <label>Nom</label>
-            <input
-              value={last}
-              onChange={(e) => setLast(e.target.value)}
-            />
+            <input value={last} onChange={(e) => setLast(e.target.value)} />
           </div>
         </div>
 
         <div className="co-field">
           <label>Adresse</label>
-          <input
-            value={addr}
-            onChange={(e) => setAddr(e.target.value)}
-          />
+          <input value={addr} onChange={(e) => setAddr(e.target.value)} />
         </div>
 
         <div className="co-grid-2">
           <div className="co-field">
             <label>Appartement, suite, etc. (optionnel)</label>
-            <input
-              value={apt}
-              onChange={(e) => setApt(e.target.value)}
-            />
+            <input value={apt} onChange={(e) => setApt(e.target.value)} />
           </div>
           <div className="co-field">
             <label>Ville</label>
@@ -300,17 +294,11 @@ export default function CheckoutPage() {
         <div className="co-grid-2">
           <div className="co-field">
             <label>Code postal (facultatif)</label>
-            <input
-              value={zip}
-              onChange={(e) => setZip(e.target.value)}
-            />
+            <input value={zip} onChange={(e) => setZip(e.target.value)} />
           </div>
           <div className="co-field">
             <label>Téléphone</label>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
         </div>
 
@@ -322,9 +310,7 @@ export default function CheckoutPage() {
               return (
                 <label
                   key={r.city}
-                  className={`co-ship-row ${
-                    checked ? "is-active" : ""
-                  }`}
+                  className={`co-ship-row ${checked ? "is-active" : ""}`}
                 >
                   <input
                     type="radio"
@@ -350,13 +336,11 @@ export default function CheckoutPage() {
           <div className="co-pay-row">
             <input type="radio" checked readOnly />
             <div>
-              <div className="co-pay-title">
-                Paiement à la livraison
-              </div>
+              <div className="co-pay-title">Paiement à la livraison</div>
               <div className="co-pay-help">
-                Paiement à la livraison disponible dans toutes les
-                villes du Maroc. Pas besoin de payer en ligne. La
-                confirmation se fait sur WhatsApp.
+                Paiement à la livraison disponible dans toutes les villes du
+                Maroc. Pas besoin de payer en ligne. La confirmation se fait sur
+                WhatsApp.
               </div>
             </div>
           </div>
@@ -368,14 +352,8 @@ export default function CheckoutPage() {
           </Alert>
         )}
 
-        <button
-          className="co-submit"
-          onClick={submit}
-          disabled={loading}
-        >
-          {loading
-            ? "Redirection vers WhatsApp…"
-            : "Valider la commande"}
+        <button className="co-submit" onClick={submit} disabled={loading}>
+          {loading ? "Redirection vers WhatsApp…" : "Valider la commande"}
         </button>
       </div>
 
@@ -392,19 +370,12 @@ export default function CheckoutPage() {
                     <div className="co-item-info">
                       <div className="co-item-name">{i.name}</div>
                       {i.variantLabel && (
-                        <div className="co-item-variant">
-                          {i.variantLabel}
-                        </div>
+                        <div className="co-item-variant">{i.variantLabel}</div>
                       )}
-                      <div className="co-item-qty">
-                        × {i.qty || 1}
-                      </div>
+                      <div className="co-item-qty">× {i.qty || 1}</div>
                     </div>
                     <div className="co-item-price">
-                      {(
-                        Number(i.price) * Number(i.qty || 1)
-                      ).toFixed(2)}{" "}
-                      MAD
+                      {(Number(i.price) * Number(i.qty || 1)).toFixed(2)} MAD
                     </div>
                   </li>
                 ))}
@@ -412,9 +383,7 @@ export default function CheckoutPage() {
 
               <div className="co-line">
                 <span>Sous-total</span>
-                <b>
-                  {Number(totals.subtotal || 0).toFixed(2)} MAD
-                </b>
+                <b>{Number(totals.subtotal || 0).toFixed(2)} MAD</b>
               </div>
               <div className="co-line">
                 <span>Expédition</span>
@@ -431,4 +400,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-
