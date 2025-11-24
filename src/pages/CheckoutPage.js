@@ -1,5 +1,4 @@
 // frontend/src/pages/CheckoutPage.js
-// ok
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert } from "react-bootstrap";
 import api from "../api";
@@ -7,7 +6,7 @@ import { useCart } from "../cart/CartProvider";
 import { SHOP } from "../config/shop";
 import { createOrder } from "../apiOrders";
 import { useHistory } from "react-router-dom";
-import { useSelector } from "react-redux"; // ⭐ NEW
+import { useSelector } from "react-redux";
 import "./checkout.css";
 
 /** Fallback if API is unreachable */
@@ -44,7 +43,7 @@ async function tryUrls(calls) {
 export default function CheckoutPage() {
   const history = useHistory();
   const { items, totals, clear } = useCart();
-  const { userInfo } = useSelector((s) => s.userLoginReducer || {}); // ⭐ NEW
+  const { userInfo } = useSelector((s) => s.userLoginReducer || {});
 
   // contact + adresse
   const [email, setEmail] = useState("");
@@ -217,7 +216,7 @@ export default function CheckoutPage() {
         }`.trim(),
         notes: "",
         payment_method: "cod",
-        shipping_price: Number(shippingPrice || 0), // ✅ send shipping price
+        shipping_price: Number(shippingPrice || 0),
         items: items.map((it) => ({
           product_id: it.id,
           variant_id: it.variantId || null,
@@ -228,21 +227,23 @@ export default function CheckoutPage() {
       // 1) Save order to backend
       const order = await createOrder(payload);
 
-      // 2) Open WhatsApp
+      // 2) Build WhatsApp URL (uses current cart snapshot)
       const wa = buildWhatsAppUrl(order);
-      window.open(wa, "_blank", "noopener,noreferrer");
 
       // 3) Clear cart
       clear();
 
-      // 4) Redirect:
-      //    - logged in → /order/:id/
-      //    - guest     → home page
+      // 4) Set where the user lands when they come BACK from WhatsApp
       if (userInfo) {
+        // logged-in client → order detail
         history.replace(`/order/${order.id}/`);
       } else {
-        history.replace("/"); // or "/thank-you" if you create that page
+        // guest → home page
+        history.replace("/");
       }
+
+      // 5) Go to WhatsApp in the SAME tab
+      window.location.href = wa;
     } catch (e) {
       setErr(
         e?.response?.data?.detail ||
