@@ -1,15 +1,14 @@
 // frontend/src/pages/CheckoutPage.js
-//ok
+// ok
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert } from "react-bootstrap";
 import api from "../api";
 import { useCart } from "../cart/CartProvider";
 import { SHOP } from "../config/shop";
 import { createOrder } from "../apiOrders";
-import { useHistory } from "react-router-dom";
 import "./checkout.css";
 
-/** Fallback if API is unreachable */
+/** Fallback si l’API des tarifs n’est pas joignable */
 const FALLBACK_RATES = [
   { city: "Casablanca", price: 20 },
   { city: "Ain Harouda", price: 30 },
@@ -41,7 +40,6 @@ async function tryUrls(calls) {
 }
 
 export default function CheckoutPage() {
-  const history = useHistory();
   const { items, totals, clear } = useCart();
 
   // contact + adresse
@@ -61,7 +59,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // load shipping rates
+  // Chargement des tarifs de livraison
   useEffect(() => {
     let alive = true;
     const isProdApp =
@@ -132,6 +130,7 @@ export default function CheckoutPage() {
     };
   }, []);
 
+  // Ville par défaut = Casablanca (ou 1er tarif)
   useEffect(() => {
     if (!rates.length) return;
     const def =
@@ -186,6 +185,7 @@ export default function CheckoutPage() {
     return `https://wa.me/${SHOP.WHATSAPP}?text=${msg}`;
   };
 
+  // ======= SUBMIT =======
   const submit = async () => {
     setErr("");
     if (!items.length) {
@@ -216,7 +216,7 @@ export default function CheckoutPage() {
         }`.trim(),
         notes: "",
         payment_method: "cod",
-        shipping_price: Number(shippingPrice || 0), // ✅ send shipping price
+        shipping_price: Number(shippingPrice || 0),
         items: items.map((it) => ({
           product_id: it.id,
           variant_id: it.variantId || null,
@@ -224,16 +224,20 @@ export default function CheckoutPage() {
         })),
       };
 
-      // 1) Save order to backend
+      // 1) Sauvegarde de la commande dans le backend
       const order = await createOrder(payload);
 
-      // 2) Open WhatsApp
+      // 2) Lien WhatsApp
       const wa = buildWhatsAppUrl(order);
-      window.open(wa, "_blank", "noopener,noreferrer");
 
-      // 3) Clear cart + redirect to order page
+      // 3) Vider le panier
       clear();
-      history.replace(`/order/${order.id}/`);
+
+      // 4) Aller sur WhatsApp dans le même onglet
+      window.location.href = wa;
+
+      // ❌ On NE redirige PLUS vers /order/:id/ pour éviter les 401
+      // history.replace(`/order/${order.id}/`);
     } catch (e) {
       setErr(
         e?.response?.data?.detail ||
@@ -431,4 +435,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-
