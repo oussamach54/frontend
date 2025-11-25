@@ -4,6 +4,7 @@ import { Container, Spinner, Alert, Form, Button } from "react-bootstrap";
 import { useParams, useHistory } from "react-router-dom";
 import { useSelector } from "react-redux";
 import api from "../api";
+import { formatOrderDate } from "../utils/dates"; // 👈 ajout
 
 export default function AdminOrderDetailPage() {
   const { userInfo } = useSelector((s) => s.userLoginReducer || {});
@@ -26,7 +27,7 @@ export default function AdminOrderDetailPage() {
   const load = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get(`/orders/admin/${id}/`); // admin detail
+      const { data } = await api.get(`/orders/admin/${id}/`);
       setOrder(data);
       setStatus(data.status || "pending");
     } catch (e) {
@@ -44,7 +45,7 @@ export default function AdminOrderDetailPage() {
   const update = async () => {
     try {
       setSaving(true);
-      await api.patch(`/orders/${id}/status/`, { status }); // update status
+      await api.patch(`/orders/${id}/status/`, { status });
       await load();
     } catch (e) {
       setErr(e?.response?.data?.detail || e.message);
@@ -57,7 +58,7 @@ export default function AdminOrderDetailPage() {
     if (!window.confirm("Supprimer définitivement cette commande ?")) return;
     try {
       setDeleting(true);
-      await api.delete(`/orders/admin/${id}/`); // ✅ DELETE endpoint
+      await api.delete(`/orders/admin/${id}/`);
       history.push("/admin/orders/");
     } catch (e) {
       setErr(e?.response?.data?.detail || e.message);
@@ -83,7 +84,8 @@ export default function AdminOrderDetailPage() {
     <Container className="py-4">
       <h3>Commande #{order.id}</h3>
       <div className="text-muted mb-3">
-        Créée le {new Date(order.created_at).toLocaleString()}
+        {/* ✅ date en Africa/Casablanca */}
+        Créée le {formatOrderDate(order.created_at)}
       </div>
 
       <div className="mb-3">

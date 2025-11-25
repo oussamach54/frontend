@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Container, Table, Spinner, Alert } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import api from "../api";
+import { formatOrderDate } from "../utils/dates"; // 👈 ajout
 
 export default function OrdersMyPage() {
   const [items, setItems] = useState([]);
@@ -14,7 +15,7 @@ export default function OrdersMyPage() {
     (async () => {
       try {
         setLoading(true);
-        const { data } = await api.get("/orders/my/");   // ✅ correct endpoint
+        const { data } = await api.get("/orders/my/");
         if (!alive) return;
         setItems(Array.isArray(data) ? data : []);
       } catch (e) {
@@ -51,9 +52,10 @@ export default function OrdersMyPage() {
               {items.map((o) => (
                 <tr key={o.id}>
                   <td>#{o.id}</td>
-                  <td>{new Date(o.created_at).toLocaleString()}</td>
+                  {/* ✅ même format partout */}
+                  <td>{formatOrderDate(o.created_at)}</td>
                   <td>{o.city}</td>
-                  <td>{Number(o.grand_total).toFixed(2)} MAD</td> {/* ✅ */}
+                  <td>{Number(o.grand_total).toFixed(2)} MAD</td>
                   <td>{o.status}</td>
                   <td>
                     <Link to={`/order/${o.id}/`}>Voir</Link>

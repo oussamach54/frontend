@@ -11,25 +11,7 @@ import {
 import { Link, useHistory } from "react-router-dom";
 import api from "../api";
 import { useSelector } from "react-redux";
-
-// ✅ Utilitaire pour afficher la date en heure du Maroc
-const formatOrderDate = (iso) => {
-  if (!iso) return "";
-  try {
-    return new Date(iso).toLocaleString("fr-FR", {
-      timeZone: "Africa/Casablanca",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  } catch (e) {
-    // fallback au cas où
-    return new Date(iso).toLocaleString();
-  }
-};
+import { formatOrderDate } from "../utils/dates"; // 👈 NOUVEL import
 
 function AdminOrderRow({ order, onSaved }) {
   const [status, setStatus] = useState(order.status || "pending");
@@ -54,7 +36,7 @@ function AdminOrderRow({ order, onSaved }) {
   return (
     <tr>
       <td>#{order.id}</td>
-      {/* ✅ Utilisation de formatOrderDate */}
+      {/* ✅ Date affichée en heure du Maroc */}
       <td>{formatOrderDate(order.created_at)}</td>
       <td>{order.full_name}</td>
       <td>{order.city}</td>
@@ -114,7 +96,7 @@ export default function AdminOrdersPage() {
         setErr("");
         const params = {};
         if (filterStatus) params.status = filterStatus;
-        const { data } = await api.get("/orders/admin/", { params }); // ✅
+        const { data } = await api.get("/orders/admin/", { params });
         if (!alive) return;
         setItems(Array.isArray(data) ? data : []);
       } catch (e) {
