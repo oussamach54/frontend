@@ -1,9 +1,35 @@
 // src/pages/AdminOrdersPage.js
 import React, { useEffect, useState } from "react";
-import { Container, Table, Spinner, Alert, Form, Button } from "react-bootstrap";
+import {
+  Container,
+  Table,
+  Spinner,
+  Alert,
+  Form,
+  Button,
+} from "react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
 import api from "../api";
 import { useSelector } from "react-redux";
+
+// ✅ Utilitaire pour afficher la date en heure du Maroc
+const formatOrderDate = (iso) => {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString("fr-FR", {
+      timeZone: "Africa/Casablanca",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch (e) {
+    // fallback au cas où
+    return new Date(iso).toLocaleString();
+  }
+};
 
 function AdminOrderRow({ order, onSaved }) {
   const [status, setStatus] = useState(order.status || "pending");
@@ -15,7 +41,11 @@ function AdminOrderRow({ order, onSaved }) {
       await api.patch(`/orders/${order.id}/status/`, { status });
       if (onSaved) onSaved();
     } catch (e) {
-      alert(e?.response?.data?.detail || e.message || "Impossible de mettre à jour le statut.");
+      alert(
+        e?.response?.data?.detail ||
+          e.message ||
+          "Impossible de mettre à jour le statut."
+      );
     } finally {
       setSaving(false);
     }
@@ -24,7 +54,8 @@ function AdminOrderRow({ order, onSaved }) {
   return (
     <tr>
       <td>#{order.id}</td>
-      <td>{new Date(order.created_at).toLocaleString()}</td>
+      {/* ✅ Utilisation de formatOrderDate */}
+      <td>{formatOrderDate(order.created_at)}</td>
       <td>{order.full_name}</td>
       <td>{order.city}</td>
       <td>{order.phone}</td>
@@ -123,7 +154,11 @@ export default function AdminOrdersPage() {
       </div>
 
       {loading && <Spinner animation="border" />}
-      {err && <Alert variant="danger" className="mt-2">{err}</Alert>}
+      {err && (
+        <Alert variant="danger" className="mt-2">
+          {err}
+        </Alert>
+      )}
 
       {!loading && !err && (
         items.length ? (
