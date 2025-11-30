@@ -52,16 +52,23 @@ export function readToken() {
 }
 
 export function clearTokens() {
-  const { access, refresh } = storageKeys();
+  const { access, refresh, user } = storageKeys();
+
+  // nouveaux clés
   localStorage.removeItem(access);
   localStorage.removeItem(refresh);
+  localStorage.removeItem(user);
+
+  // anciens / legacy
   localStorage.removeItem("access");
   localStorage.removeItem("token");
   localStorage.removeItem("refresh");
+  localStorage.removeItem("userInfo");
 }
 
 const api = axios.create({
-  baseURL: `${chooseBaseURL()}/api`, // we always call relative paths like "/products/"
+  // on appelle toujours "/products/", "/orders/...", etc.
+  baseURL: `${chooseBaseURL()}/api`,
   timeout: 20000,
 });
 
@@ -72,9 +79,31 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+/** Gestion centralisée des erreurs */
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    const status = err?.response?.status;
+    const detail = err?.response?.data?.detail;
+
+    // 🔴 Cas token invalide / expiré (message typique DRF SimpleJWT)
+    if (
+      status === 401 &&
+      typeof detail === "string"
+    ) {
+      const low = detail.toLowerCase();
+
+      if (
+        low.includes("given token not valid for any token type") ||
+        low.includes("token is invalid or expired") ||
+        low.includes("not authenticated")
+      ) {
+        // On nettoie tout : l'utilisateur sera simplement déconnecté
+        clearTokens();
+      }
+    }
+
+    // log console pour debug
     // eslint-disable-next-line no-console
     console.error("API error:", err?.response || err.message);
     return Promise.reject(err);
