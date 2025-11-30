@@ -130,7 +130,7 @@ export default function CheckoutPage() {
     };
   }, []);
 
-  // Ville par défaut = Casablanca (ou 1er tarif)
+  // Ville par défaut = Casablanca
   useEffect(() => {
     if (!rates.length) return;
     const def =
@@ -144,6 +144,7 @@ export default function CheckoutPage() {
     [totals.subtotal, shippingPrice]
   );
 
+  // ===================== WHATSAPP =======================
   const buildWhatsAppUrl = (createdOrder) => {
     const lines = [];
     lines.push(
@@ -151,6 +152,7 @@ export default function CheckoutPage() {
     );
     lines.push("");
     lines.push("*Articles :*");
+
     items.forEach((it) => {
       const q = Number(it.qty || 1);
       const p = Number(it.price).toFixed(2);
@@ -160,10 +162,12 @@ export default function CheckoutPage() {
         } — ${p} MAD × ${q}`
       );
     });
+
     lines.push("");
     const ss = Number(totals.subtotal || 0).toFixed(2);
     const sp = Number(shippingPrice || 0).toFixed(2);
     const tt = Number(total).toFixed(2);
+
     lines.push(`Sous-total : ${ss} MAD`);
     lines.push(`Livraison : ${sp} MAD`);
     lines.push(`*Total : ${tt} MAD*`);
@@ -181,11 +185,14 @@ export default function CheckoutPage() {
     );
     lines.push("");
     lines.push("Merci de confirmer ma commande 🙏");
+
     const msg = encodeURIComponent(lines.join("\n"));
-    return `https://wa.me/${SHOP.WHATSAPP}?text=${msg}`;
+
+    // ✅ VERSION 100% COMPATIBLE (fix users seeing blank page)
+    return `https://api.whatsapp.com/send?phone=${SHOP.WHATSAPP}&text=${msg}`;
   };
 
-  // ======= SUBMIT =======
+  // ===================== SUBMIT =======================
   const submit = async () => {
     setErr("");
     if (!items.length) {
@@ -224,20 +231,17 @@ export default function CheckoutPage() {
         })),
       };
 
-      // 1) Sauvegarde de la commande dans le backend
+      // 1) backend : création commande
       const order = await createOrder(payload);
 
-      // 2) Lien WhatsApp
+      // 2) construire URL WhatsApp
       const wa = buildWhatsAppUrl(order);
 
-      // 3) Vider le panier
+      // 3) vider panier
       clear();
 
-      // 4) Aller sur WhatsApp dans le même onglet
+      // 4) redirection WHATSAPP dans même onglet
       window.location.href = wa;
-
-      // ❌ On NE redirige PLUS vers /order/:id/ pour éviter les 401
-      // history.replace(`/order/${order.id}/`);
     } catch (e) {
       setErr(
         e?.response?.data?.detail ||
@@ -255,45 +259,30 @@ export default function CheckoutPage() {
         <h2 className="co-title">Contact</h2>
         <div className="co-field">
           <label>E-mail ou numéro de portable</label>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
 
         <h2 className="co-title">Livraison</h2>
         <div className="co-grid-2">
           <div className="co-field">
             <label>Prénom (optionnel)</label>
-            <input
-              value={first}
-              onChange={(e) => setFirst(e.target.value)}
-            />
+            <input value={first} onChange={(e) => setFirst(e.target.value)} />
           </div>
           <div className="co-field">
             <label>Nom</label>
-            <input
-              value={last}
-              onChange={(e) => setLast(e.target.value)}
-            />
+            <input value={last} onChange={(e) => setLast(e.target.value)} />
           </div>
         </div>
 
         <div className="co-field">
           <label>Adresse</label>
-          <input
-            value={addr}
-            onChange={(e) => setAddr(e.target.value)}
-          />
+          <input value={addr} onChange={(e) => setAddr(e.target.value)} />
         </div>
 
         <div className="co-grid-2">
           <div className="co-field">
             <label>Appartement, suite, etc. (optionnel)</label>
-            <input
-              value={apt}
-              onChange={(e) => setApt(e.target.value)}
-            />
+            <input value={apt} onChange={(e) => setApt(e.target.value)} />
           </div>
           <div className="co-field">
             <label>Ville</label>
@@ -304,17 +293,11 @@ export default function CheckoutPage() {
         <div className="co-grid-2">
           <div className="co-field">
             <label>Code postal (facultatif)</label>
-            <input
-              value={zip}
-              onChange={(e) => setZip(e.target.value)}
-            />
+            <input value={zip} onChange={(e) => setZip(e.target.value)} />
           </div>
           <div className="co-field">
             <label>Téléphone</label>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
         </div>
 
@@ -326,9 +309,7 @@ export default function CheckoutPage() {
               return (
                 <label
                   key={r.city}
-                  className={`co-ship-row ${
-                    checked ? "is-active" : ""
-                  }`}
+                  className={`co-ship-row ${checked ? "is-active" : ""}`}
                 >
                   <input
                     type="radio"
@@ -354,13 +335,11 @@ export default function CheckoutPage() {
           <div className="co-pay-row">
             <input type="radio" checked readOnly />
             <div>
-              <div className="co-pay-title">
-                Paiement à la livraison
-              </div>
+              <div className="co-pay-title">Paiement à la livraison</div>
               <div className="co-pay-help">
-                Paiement à la livraison disponible dans toutes les
-                villes du Maroc. Pas besoin de payer en ligne. La
-                confirmation se fait sur WhatsApp.
+                Paiement à la livraison disponible dans toutes les villes du
+                Maroc. Pas besoin de payer en ligne. La confirmation se fait sur
+                WhatsApp.
               </div>
             </div>
           </div>
@@ -372,14 +351,8 @@ export default function CheckoutPage() {
           </Alert>
         )}
 
-        <button
-          className="co-submit"
-          onClick={submit}
-          disabled={loading}
-        >
-          {loading
-            ? "Redirection vers WhatsApp…"
-            : "Valider la commande"}
+        <button className="co-submit" onClick={submit} disabled={loading}>
+          {loading ? "Redirection vers WhatsApp…" : "Valider la commande"}
         </button>
       </div>
 
@@ -405,10 +378,7 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                     <div className="co-item-price">
-                      {(
-                        Number(i.price) * Number(i.qty || 1)
-                      ).toFixed(2)}{" "}
-                      MAD
+                      {(Number(i.price) * Number(i.qty || 1)).toFixed(2)} MAD
                     </div>
                   </li>
                 ))}
@@ -416,9 +386,7 @@ export default function CheckoutPage() {
 
               <div className="co-line">
                 <span>Sous-total</span>
-                <b>
-                  {Number(totals.subtotal || 0).toFixed(2)} MAD
-                </b>
+                <b>{Number(totals.subtotal || 0).toFixed(2)} MAD</b>
               </div>
               <div className="co-line">
                 <span>Expédition</span>

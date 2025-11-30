@@ -3,7 +3,24 @@ import React, { useEffect, useState } from "react";
 import { Container, Table, Spinner, Alert } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import api from "../api";
-import { formatOrderDate } from "../utils/dates"; // 👈 ajout
+
+// ✅ util pour afficher la date Maroc
+const formatOrderDate = (iso) => {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString("fr-FR", {
+      timeZone: "Africa/Casablanca",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch (e) {
+    return new Date(iso).toLocaleString();
+  }
+};
 
 export default function OrdersMyPage() {
   const [items, setItems] = useState([]);
@@ -15,7 +32,7 @@ export default function OrdersMyPage() {
     (async () => {
       try {
         setLoading(true);
-        const { data } = await api.get("/orders/my/");
+        const { data } = await api.get("/orders/my/");   // ✅ correct endpoint
         if (!alive) return;
         setItems(Array.isArray(data) ? data : []);
       } catch (e) {
@@ -49,19 +66,21 @@ export default function OrdersMyPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((o) => (
-                <tr key={o.id}>
-                  <td>#{o.id}</td>
-                  {/* ✅ même format partout */}
-                  <td>{formatOrderDate(o.created_at)}</td>
-                  <td>{o.city}</td>
-                  <td>{Number(o.grand_total).toFixed(2)} MAD</td>
-                  <td>{o.status}</td>
-                  <td>
-                    <Link to={`/order/${o.id}/`}>Voir</Link>
-                  </td>
-                </tr>
-              ))}
+              {items.map((o) => {
+                const iso = o.created_at_local || o.created_at;
+                return (
+                  <tr key={o.id}>
+                    <td>#{o.id}</td>
+                    <td>{formatOrderDate(iso)}</td>
+                    <td>{o.city}</td>
+                    <td>{Number(o.grand_total).toFixed(2)} MAD</td>
+                    <td>{o.status}</td>
+                    <td>
+                      <Link to={`/order/${o.id}/`}>Voir</Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
         ) : (
