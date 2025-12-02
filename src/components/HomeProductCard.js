@@ -155,16 +155,23 @@ export default function HomeProductCard({ product }) {
           </div>
         )}
 
-        <div className="hp-price-wrap">
-          {hasDiscount && (
-            <span className="hp-price-old">
-              {oldDisplay.toFixed(2)} MAD
-            </span>
-          )}
-          <span className="hp-price-new">
-            {newDisplay.toFixed(2)} MAD
-          </span>
-        </div>
+       <div className="hp-price-wrap">
+  {hasDiscount && (
+    <span className="hp-price-old">
+      {oldDisplay.toFixed(2)} MAD
+    </span>
+  )}
+  <span
+    className={
+      hasDiscount
+        ? "hp-price-new hp-price-new--promo" // promo → rose
+        : "hp-price-new"                      // normal → noir
+    }
+  >
+    {newDisplay.toFixed(2)} MAD
+  </span>
+</div>
+
       </div>
     </article>
   );

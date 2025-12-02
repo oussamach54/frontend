@@ -233,16 +233,22 @@
 
 .hp-price-old {
   text-decoration: line-through;
-  color: #000000;       /* noir */
-  font-weight: 500;
+  color: #000000;      /* noir */
+  font-weight: 400;    /* normal */
   font-size: 0.9rem;
 }
 
+/* prix par défaut – produits sans promo */
 .hp-price-new {
-  color: #ff2f86;       /* rose */
-  font-weight: 800;
+  color: #000000;      /* noir */
+  font-weight: 400;    /* pas gras */
   letter-spacing: 0.2px;
   font-size: 1.05rem;
+}
+
+/* prix promo – seulement quand hasDiscount = true */
+.hp-price-new--promo {
+  color: #ff2f86;      /* rose */
 }
 
 /* =========================================================
