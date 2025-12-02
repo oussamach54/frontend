@@ -1,6 +1,5 @@
 /* =========================================================
-   GRILLE PRODUITS (page /products)
-   2 produits par ligne sur mobile, pas de zoom
+   GRILLE PRODUITS
    ========================================================= */
 
 .hp-grid {
@@ -8,44 +7,15 @@
   gap: 24px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
-@media (max-width: 1200px) { .hp-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 768px)  { .hp-grid { grid-template-columns: repeat(2, 1fr); } }
 
-/* 🔁 CHANGEMENT ICI : on garde 2 colonnes sur mobile */
-@media (max-width: 480px)  { .hp-grid { grid-template-columns: repeat(2, 1fr); } }
-
-@media (max-width: 1200px) {
-  .hp-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 992px) {
-  .hp-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .hp-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 576px) {
-  .hp-grid {
-    grid-template-columns: repeat(2, minmax(150px, 1fr));
-  }
-}
-
-@media (max-width: 380px) {
-  .hp-grid {
-    grid-template-columns: repeat(2, minmax(135px, 1fr));
-  }
-}
+@media (max-width: 1200px)  { .hp-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 992px)   { .hp-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px)   { .hp-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 576px)   { .hp-grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); } }
+@media (max-width: 380px)   { .hp-grid { grid-template-columns: repeat(2, minmax(135px, 1fr)); } }
 
 /* =========================================================
-   CARTE PRODUIT (utilisée partout)
+   CARTE PRODUIT
    ========================================================= */
 
 .hp-card {
@@ -69,10 +39,15 @@
 
 /* -------- VISUEL -------- */
 
+.hp-media-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
 .hp-media {
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 5; /* ratio propre sur mobile */
+  aspect-ratio: 4 / 5;
   background: linear-gradient(180deg, #ffffff, #faf9ff);
   overflow: hidden;
 }
@@ -98,7 +73,7 @@
   }
 }
 
-/* -------- BADGES -------- */
+/* -------- BADGES (stock / promo) -------- */
 
 .hp-badge {
   position: absolute;
@@ -118,19 +93,104 @@
   border: 1px solid #fecaca;
 }
 
-/* 🔁 CHANGEMENT : image un peu moins haute sur petit écran */
-@media (max-width: 480px) {
-  .hp-media {
-    aspect-ratio: 3 / 4;
-  }
+.hp-badge--sale {
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
 }
 
-/* Centered hover actions */
-.hp-actions {
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  gap: 12px; opacity: 0; transform: translateY(8px);
-  transition: all 0.25s ease; pointer-events: none;
+/* -------- ACTIONS hover (wishlist / eye) -------- */
+
+.hp-actions-row {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: all 0.2s ease;
+  z-index: 4;
+}
+
+/* visibles uniquement au survol de la carte */
+.hp-card:hover .hp-actions-row {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.hp-action-square {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 8px 18px rgba(16, 24, 40, 0.18);
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+  cursor: pointer;
+}
+
+.hp-action-square:hover {
+  transform: translateY(-1px);
+  background: #f8fafc;
+}
+
+/* -------- BOUTON AJOUTER AU PANIER (hover, en bas de l’image) -------- */
+
+.hp-addbar {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translate(-50%, 120%);
+  width: calc(100% - 32px);
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.22s ease;
+  z-index: 3;
+}
+
+/* affiche le bouton seulement quand on survole la carte, comme avant */
+.hp-card:hover .hp-addbar {
+  transform: translate(-50%, 0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hp-card:hover .hp-addbar:not(.is-disabled) {
+  background: #111827;
+  color: #ffffff;
+}
+
+.hp-addbar.is-disabled {
+  background: #9ca3af;
+  border-color: #9ca3af;
+  color: #f9fafb;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* -------- CONTENU TEXTE -------- */
+
+.hp-body {
+  padding: 12px 14px 16px;
 }
 
 .hp-title {
@@ -154,7 +214,7 @@
   }
 }
 
-/* Badges de catégories sous le titre */
+/* badges de catégories */
 
 .hp-body .badge {
   font-size: 0.72rem;
@@ -173,94 +233,20 @@
 
 .hp-price-old {
   text-decoration: line-through;
-  color: #000000;
+  color: #000000;       /* noir */
   font-weight: 500;
   font-size: 0.9rem;
 }
 
 .hp-price-new {
-  color: #000000;
+  color: #ff2f86;       /* rose */
   font-weight: 800;
   letter-spacing: 0.2px;
   font-size: 1.05rem;
 }
 
 /* =========================================================
-   ACTIONS SUR IMAGE (wishlist / voir / ajouter au panier)
-   ========================================================= */
-
-.hp-actions-row {
-  position: absolute;
-  left: 50%;
-  bottom: 100px;
-  transform: translateX(-50%) translateY(8px);
-  display: flex;
-  gap: 10px;
-  opacity: 0;
-  pointer-events: none;
-  transition: all 0.25s ease;
-  z-index: 4;
-}
-
-.hp-card:hover .hp-actions-row {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-  pointer-events: auto;
-}
-
-.hp-action-square {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #0f172a;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.14);
-  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
-  cursor: pointer;
-}
-
-.hp-action-square:hover {
-  transform: translateY(-2px);
-  background: #f8fafc;
-}
-
-/* Barre sombre “Ajouter au panier” */
-
-.hp-addbar {
-  position: absolute;
-  left: 50%;
-  bottom: 22px;
-  transform: translateX(-50%) translateY(8px);
-  width: calc(100% - 44px);
-  padding: 12px 14px;
-  border-radius: 12px;
-  font-weight: 800;
-  letter-spacing: 0.2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: #111827;
-  color: #ffffff;
-  border: 1px solid rgba(2, 6, 23, 0.22);
-  box-shadow: 0 16px 32px rgba(2, 6, 23, 0.35);
-  opacity: 0;
-  pointer-events: none;
-  transition: all 0.25s ease;
-  z-index: 3;
-}
-
-.hp-card:hover .hp-addbar {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-  pointer-events: auto;
-}
-
-/* =========================================================
-   HERO (page d’accueil) – inchangé sauf petits ajustements
+   (le reste du fichier : hero, tabs, vidéo, hscroll, typo)
    ========================================================= */
 
 .hero-strip {
@@ -282,7 +268,7 @@
   background: linear-gradient(
     90deg,
     rgba(0, 0, 0, 0.18),
-    rgba(0, 0, 0, 0.0)
+    rgba(0, 0, 0, 0)
   );
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
@@ -306,17 +292,9 @@
 }
 
 @keyframes hero-scroll {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
 }
-
-/* =========================================================
-   TABS (boutons catégories ronds)
-   ========================================================= */
 
 .hp-tab {
   font-weight: 700;
@@ -328,8 +306,8 @@
   color: #333;
   font-size: 0.88rem;
   margin: 4px 6px 4px 0;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease,
-    transform 0.15s ease;
+  transition: background 0.2s ease, color 0.2s ease,
+    border-color 0.2s ease, transform 0.15s ease;
 }
 
 .hp-tab.is-active,
@@ -339,10 +317,6 @@
   border-color: #b9e2ff;
   transform: translateY(-1px);
 }
-
-/* =========================================================
-   SECTION VIDÉO (home)
-   ========================================================= */
 
 .video-section {
   padding: 56px 0 64px;
@@ -378,10 +352,6 @@
   object-fit: cover;
 }
 
-/* =========================================================
-   RANGÉE HORIZONTALE (featured / favoris)
-   ========================================================= */
-
 .hscroll-wrapper {
   position: relative;
 }
@@ -410,25 +380,18 @@
   background: transparent;
 }
 
-/* largeur des cartes UNIQUEMENT dans la strip horizontale */
 .hp-strip .hp-card {
   flex: 0 0 230px;
   scroll-snap-align: start;
 }
 
 @media (min-width: 1400px) {
-  .hp-strip .hp-card {
-    flex-basis: 260px;
-  }
+  .hp-strip .hp-card { flex-basis: 260px; }
 }
 
 @media (max-width: 576px) {
-  .hp-strip .hp-card {
-    flex-basis: 190px;
-  }
+  .hp-strip .hp-card { flex-basis: 190px; }
 }
-
-/* flèches gauche/droite (HScrollButtons) */
 
 .hscroll-btn {
   position: absolute;
@@ -447,48 +410,23 @@
   opacity: 0.9;
 }
 
-.hscroll-btn--left {
-  left: -12px;
-}
+.hscroll-btn--left  { left: -12px; }
+.hscroll-btn--right { right: -12px; }
 
-.hscroll-btn--right {
-  right: -12px;
-}
-
-.hscroll-btn:hover {
-  opacity: 1;
-}
+.hscroll-btn:hover { opacity: 1; }
 
 @media (max-width: 576px) {
-  .hscroll-btn {
-    display: none;
-  }
+  .hscroll-btn { display: none; }
 }
 
-/* drag-to-scroll */
-
-.drag-scroll {
-  cursor: grab;
-}
-
+.drag-scroll { cursor: grab; }
 .drag-scroll.is-dragging {
   cursor: grabbing;
   user-select: none;
 }
-/* =========================================================
-   HOMEPAGE – Typo responsive mobile
-   Réduit les gros titres sur téléphone
-   ========================================================= */
 
 @media (max-width: 768px) {
-  /* Hero section height + text size */
-  .hero-strip {
-    height: 260px;
-  }
-
-  .hero-overlay {
-    padding: 0 16px;
-  }
+  .hero-strip { height: 260px; }
 
   .display-hero {
     font-size: 1.7rem;
@@ -503,27 +441,18 @@
     margin-right: auto;
   }
 
-  /* Section titles on homepage (produits mis en avant / favoris) */
   .home-section-title {
     font-size: 1.5rem;
     line-height: 1.25;
   }
 
-  /* Small extra spacing so the headings don’t look “collés” */
   .home-section-title + .row,
   .home-section-title + .d-flex {
     margin-top: 0.25rem;
   }
 }
 
-/* Encore plus petit sur très petit écran (anciens téléphones) */
 @media (max-width: 480px) {
-  .display-hero {
-    font-size: 1.5rem;
-  }
-
-  .home-section-title {
-    font-size: 1.3rem;
-  }
+  .display-hero { font-size: 1.5rem; }
+  .home-section-title { font-size: 1.3rem; }
 }
-

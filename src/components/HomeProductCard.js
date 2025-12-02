@@ -30,6 +30,7 @@ export default function HomeProductCard({ product }) {
 
   const img = productImage(product);
 
+  // Promo / variants
   const promoVariantId = product.promo_variant_id;
   const hasDiscount = !!product?.has_discount && !!promoVariantId;
   const promoVariant = (product.variants || []).find(
@@ -46,7 +47,6 @@ export default function HomeProductCard({ product }) {
 
   const percent = Number(product?.discount_percent || 0);
 
-  // ✅ rupture de stock: si stock === false ➜ on désactive le bouton
   const isOutOfStock = !product.stock;
 
   const addToCart = () =>
@@ -67,9 +67,11 @@ export default function HomeProductCard({ product }) {
     dispatch(toggleWishlist(id));
   };
 
-  // gérer les catégories (slug principal + liste)
+  // catégories
   const primary = (product.category || "").trim();
-  const extrasRaw = Array.isArray(product.categories) ? product.categories : [];
+  const extrasRaw = Array.isArray(product.categories)
+    ? product.categories
+    : [];
   const extras = extrasRaw.filter(
     (c) => c && String(c).trim().toLowerCase() !== primary.toLowerCase()
   );
@@ -77,6 +79,7 @@ export default function HomeProductCard({ product }) {
 
   return (
     <article className="hp-card">
+      {/* Badges en haut à gauche */}
       {!product.stock && (
         <span className="hp-badge hp-badge--ko">Out of stock</span>
       )}
@@ -84,42 +87,48 @@ export default function HomeProductCard({ product }) {
         <span className="hp-badge hp-badge--sale">-{percent}%</span>
       )}
 
-      <Link
-        to={`/product/${id}/`}
-        className="hp-media"
-        aria-label={product.name}
-      >
-        <img src={img} alt={product.name} />
-      </Link>
+      {/* Image + actions hover + bouton panier hover */}
+      <div className="hp-media-wrap">
+        <Link
+          to={`/product/${id}/`}
+          className="hp-media"
+          aria-label={product.name}
+        >
+          <img src={img} alt={product.name} />
+        </Link>
 
-      <div className="hp-actions-row">
+        {/* Icônes cœur / œil – visibles seulement au survol de la carte */}
+        <div className="hp-actions-row">
+          <button
+            type="button"
+            className="hp-action-square"
+            title="Ajouter à la wishlist"
+            onClick={addToWishlist}
+          >
+            <i className="fas fa-heart" />
+          </button>
+          <Link
+            className="hp-action-square"
+            to={`/product/${id}/`}
+            title="Voir le produit"
+          >
+            <i className="fas fa-eye" />
+          </Link>
+        </div>
+
+        {/* Bouton AJOUTER AU PANIER – collé en bas de l’image, seulement au hover */}
         <button
           type="button"
-          className="hp-action-square"
-          title="Ajouter à la wishlist"
-          onClick={addToWishlist}
+          className={`hp-addbar ${isOutOfStock ? "is-disabled" : ""}`}
+          onClick={isOutOfStock ? undefined : addToCart}
+          disabled={isOutOfStock}
         >
-          <i className="fas fa-heart" />
+          <i className="fas fa-shopping-bag mr-2" />
+          {isOutOfStock ? "RUPTURE DE STOCK" : "AJOUTER AU PANIER"}
         </button>
-        <Link
-          className="hp-action-square"
-          to={`/product/${id}/`}
-          title="Voir le produit"
-        >
-          <i className="fas fa-eye" />
-        </Link>
       </div>
 
-      <button
-        type="button"
-        className={`hp-addbar ${isOutOfStock ? "is-disabled" : ""}`}
-        onClick={isOutOfStock ? undefined : addToCart}
-        disabled={isOutOfStock}
-      >
-        <i className="fas fa-shopping-bag mr-2" />
-        {isOutOfStock ? "RUPTURE DE STOCK" : "AJOUTER AU PANIER"}
-      </button>
-
+      {/* Contenu texte sous l’image : titre, tags, prix */}
       <div className="hp-body">
         <Link to={`/product/${id}/`} className="hp-title">
           {product.name}
