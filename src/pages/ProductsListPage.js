@@ -1,5 +1,5 @@
+// src/pages/ProductsListPage.js
 import React, { useEffect, useMemo, useState } from "react";
-//ok
 import { Container, Row, Col, Spinner, Alert, Form } from "react-bootstrap";
 import api from "../api";
 import HomeProductCard from "../components/HomeProductCard";
@@ -30,7 +30,7 @@ export default function ProductsListPage() {
   const [cat, setCat]     = useState("");
   const [brand, setBrand] = useState("");
 
-  // ------- Read query string (brand, category/type, search or searchTerm) ------
+  // -------- Read query string (brand, category/type, search or searchTerm) ------
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     const b = p.get("brand") || "";
@@ -40,79 +40,76 @@ export default function ProductsListPage() {
     setCat(c);
     setQ(s);
   }, []);
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
-  // Keep URL in sync as user types (so you can share/refresh)
+  // Garder l’URL synchronisée quand l’utilisateur tape / change les filtres
   useEffect(() => {
     const p = new URLSearchParams();
     if (brand) p.set("brand", brand);
-    if (cat)   p.set("type", cat); // keep using ?type= for category
+    if (cat)   p.set("type", cat); // on garde ?type= pour la catégorie
     if (q)     p.set("search", q);
     const qs = p.toString();
     const url = qs ? `/products?${qs}` : "/products";
     window.history.replaceState(null, "", url);
   }, [brand, cat, q]);
 
+  // Fetch serveur – on ne filtre par marque que côté backend
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setError(null);
 
-// Server fetch; let backend pré-filtrer seulement par marque (optionnel)
-useEffect(() => {
-  let alive = true;
-  setLoading(true);
-  setError(null);
-  (async () => {
-    try {
-      const params = {};
-      // ❌ NE PLUS ENVOYER params.type = cat
-      if (brand) params.brand = brand; // ok : filtrage serveur par marque
+    (async () => {
+      try {
+        const params = {};
+        if (brand) params.brand = brand;
 
-      // ❌ soit tu enlèves search ici et tu filtres uniquement côté client…
-      // if (q) params.search = q;
+        const { data } = await api.get("/products/", { params });
+        if (!alive) return;
+        setItems(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!alive) return;
+        setError(e?.response?.data?.detail || e.message);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
 
-      const { data } = await api.get("/products/", { params });
-      if (!alive) return;
-      setItems(Array.isArray(data) ? data : []);
-    } catch (e) {
-      if (!alive) return;
-      setError(e?.response?.data?.detail || e.message);
-    } finally {
-      if (alive) setLoading(false);
-    }
-  })();
-  return () => {
-    alive = false;
-  };
-}, [brand /* , q, cat */]);  // cat n’est plus dans les dépendances pour l’appel API
+    return () => {
+      alive = false;
+    };
+  }, [brand]); // pas de filtre cat/q côté API
 
-  // Client-side final filter: category can come from `category` OR `categories[]`
-const filtered = useMemo(() => {
-  const s = (q || "").trim().toLowerCase();
-  const selected = (cat || "").toLowerCase();
+  // Filtre final côté client (catégorie + recherche texte)
+  const filtered = useMemo(() => {
+    const s = (q || "").trim().toLowerCase();
+    const selected = (cat || "").toLowerCase();
 
-  return items.filter((p) => {
-    const primary = (p.category || "").toLowerCase();
-    const extra = Array.isArray(p.categories)
-      ? p.categories.map((c) => (c || "").toLowerCase())
-      : [];
+    return items.filter((p) => {
+      const primary = (p.category || "").toLowerCase();
+      const extra = Array.isArray(p.categories)
+        ? p.categories.map((c) => (c || "").toLowerCase())
+        : [];
 
-    const allCats = primary ? [primary, ...extra] : extra;
-    const okCat = !selected || allCats.includes(selected);
+      const allCats = primary ? [primary, ...extra] : extra;
+      const okCat = !selected || allCats.includes(selected);
 
-    if (!s) return okCat;
+      if (!s) return okCat;
 
-    const name = (p.name || "").toLowerCase();
-    return okCat && name.includes(s); // filtre texte
-  });
-}, [items, q, cat]);
-
+      const name = (p.name || "").toLowerCase();
+      return okCat && name.includes(s);
+    });
+  }, [items, q, cat]);
 
   return (
-    <Container className="py-5">
-      <Row className="align-items-center mb-3">
+    <Container className="py-4 products-page">
+      <Row className="align-items-center mb-3 products-header">
         <Col>
-          <h2 className="m-0 font-display fw-700">Tous les produits</h2>
+          <h2 className="m-0 products-title">Tous les produits</h2>
         </Col>
         <Col md="6">
           <Form.Control
+            className="products-search"
             placeholder="Rechercher un produit (par nom)…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
