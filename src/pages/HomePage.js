@@ -1,5 +1,5 @@
 // src/pages/HomePage.js
-//ok
+// ok
 import React, { useEffect, useMemo, useState } from "react";
 import { Container, Row, Col, Button, Spinner, Alert, Nav } from "react-bootstrap";
 import api from "../api";
@@ -116,7 +116,8 @@ export default function HomePage() {
             Bienvenue sur Miniglow by Shay
           </h1>
           <p className="display-sub lead-tight font-sans mb-4">
-              “MiniGlow by Shay – Décants de cosmétiques originaux pour briller chaque jour”.          </p>
+            “MiniGlow by Shay – Décants de cosmétiques originaux pour briller chaque jour”.
+          </p>
           <Button size="lg" variant="light" href="/products">
             Découvrir nos produits
           </Button>
@@ -132,7 +133,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ===== Produits mis en avant ===== */}
+      {/* ===== Produits mis en avant – carrousel horizontal ===== */}
       <Container className="py-5">
         <Row className="align-items-center mb-3">
           <Col>
@@ -154,7 +155,7 @@ export default function HomePage() {
 
         {!loadingFeatured && !errorFeatured && (
           featured.length ? (
-            <HScrollButtons step={340}>
+            <HScrollButtons step={280}>
               {featured.map((p) => (
                 <HomeProductCard key={p.id} product={p} />
               ))}
@@ -167,7 +168,7 @@ export default function HomePage() {
         )}
       </Container>
 
-      {/* ⭐ ===== Produits favoris ===== */}
+      {/* ⭐ ===== Produits favoris – carrousel horizontal ===== */}
       <Container className="pb-4">
         <Row className="align-items-center mb-3">
           <Col>
@@ -184,7 +185,7 @@ export default function HomePage() {
 
         {!loadingFav && !errorFav && (
           favorites.length ? (
-            <HScrollButtons step={340}>
+            <HScrollButtons step={280}>
               {favorites.map((p) => (
                 <HomeProductCard key={p.id} product={p} />
               ))}
@@ -197,7 +198,7 @@ export default function HomePage() {
         )}
       </Container>
 
-      {/* ===== Rayons par catégorie (onglets) ===== */}
+      {/* ===== Rayons par catégorie – onglets + carrousel ===== */}
       <Container className="py-4">
         <div className="hp-tabs">
           <Nav
@@ -229,7 +230,7 @@ export default function HomePage() {
 
           {!loading && !error && (
             products.length ? (
-              <HScrollButtons step={340}>
+              <HScrollButtons step={280}>
                 {products.map((p) => (
                   <HomeProductCard key={p.id} product={p} />
                 ))}
@@ -245,7 +246,7 @@ export default function HomePage() {
 
       <BrandMarquee />
 
-      {/* ===== Mise en avant vidéo soins de la peau ===== */}
+      {/* ===== Section vidéo ===== */}
       <section className="video-section">
         <Container>
           <Row className="align-items-center">
@@ -290,4 +291,3 @@ export default function HomePage() {
     </>
   );
 }
-

@@ -4,7 +4,7 @@
   max-width: 1060px;
   padding-top: 24px;
   padding-bottom: 40px;
-  font-size: 0.9rem; /* un peu plus petit */
+  font-size: 0.9rem;
 }
 
 /* ========= Image ========= */
@@ -33,7 +33,6 @@
 }
 
 /* badge -% sur l’image */
-
 .pd-sale-badge--media {
   position: absolute;
   top: 14px;
@@ -76,7 +75,7 @@
 
 .pd-chip--ok {
   background: #ecfdf3;
-  color: #166534;
+  color: #f79d9d;
   border-color: #bbf7d0;
 }
 
@@ -103,7 +102,6 @@
   flex-wrap: wrap;
 }
 
-/* base pill */
 .pd-variant-pill {
   appearance: none;
   -webkit-appearance: none;
@@ -162,34 +160,56 @@
 
 /* ========= Bloc prix ========= */
 
+/* bandeau violet “Prix … Variante …” */
 .pd-price {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #f8f9ff;
+  border: 1px solid #e0e7ff;
 }
 
-.pd-price-wrap {
+/* label à gauche */
+.pd-price-label {
+  flex: 0 0 auto;
+}
+
+/* centre : ancien prix + badge % + nouveau prix */
+.pd-price-main {
+  flex: 1 1 auto;
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  margin-top: 4px;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-/* ancien prix : noir barré, léger */
+/* texte “Variante : …” à droite */
+.pd-price-variant {
+  flex: 0 0 auto;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ancien prix : noir, barré, léger */
 .pd-price-old {
   text-decoration: line-through;
   color: #000000;
   font-weight: 400;
-  font-size: 0.88rem;
+  font-size: 0.9rem;
 }
 
-/* prix normal */
+/* prix = rose */
 .pd-price-new {
-  color: #000000;
+  color: #ff178b;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.05rem;
 }
 
-/* prix promo (quand promo) */
+/* prix promo (on garde la même couleur mais classe séparée) */
 .pd-price-new--promo {
   color: #ff178b;
 }
@@ -205,6 +225,12 @@
   font-weight: 700;
   background: #fee2e2;
   color: #b91c1c;
+}
+
+/* au cas où un .text-success trainait dans ce bloc */
+.pd .text-success,
+.pd .text-success strong {
+  color: #ff178b !important;
 }
 
 /* ========= Quantité ========= */
@@ -251,15 +277,18 @@
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
+/* ✅ bouton AJOUTER AU PANIER en rose tout le temps */
 .pd-btn-primary {
-  background: #111827;
-  color: #ffffff;
-  border-color: #111827;
+  background: #ea9595 !important;
+  color: #ffffff !important;
+  border-color: #f67d7d !important;
 }
 
 .pd-btn-primary:hover {
-  background: #020617;
+  background: #f29696 !important;
+  border-color: #fa9f9f !important;
 }
+
 
 .pd-btn-outline {
   background: #ffffff;
@@ -287,5 +316,19 @@
 
   .pd-title {
     font-size: 1.2rem;
+  }
+
+  .pd-price {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pd-price-main {
+    justify-content: flex-start;
+  }
+
+  .pd-price-variant {
+    text-align: left;
+    white-space: normal;
   }
 }

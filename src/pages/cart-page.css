@@ -200,8 +200,8 @@
 .cp-btn:active { transform: translateY(1px); }
 
 .cp-btn.primary {
-  background: #22c55e;
-  border-color: #22c55e;
+  background: #f18a8a;
+  border-color: #f69393;
   color: #fff;
 }
 .cp-btn.block { width: 100%; }

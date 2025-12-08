@@ -1,3 +1,4 @@
+// src/pages/ProductDetailsPage.js
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Spinner, Row, Col, Container, Button, Modal } from "react-bootstrap";
@@ -12,6 +13,8 @@ import {
   CARD_CREATE_RESET,
 } from "../constants";
 import { productImage } from "../utils/media";
+
+import "./ProductDetailsPage.css";
 
 // ✅ Category labels mapping
 const CATEGORY_LABELS = {
@@ -66,6 +69,8 @@ function ProductDetailsPage({ history, match }) {
 
   useEffect(() => {
     if (!variants.length) return;
+
+    // Si promo, on sélectionne la variante promo par défaut
     if (hasDiscount && promoVariantId && variantId == null) {
       const pv = variants.find((v) => String(v.id) === String(promoVariantId));
       if (pv) {
@@ -73,6 +78,8 @@ function ProductDetailsPage({ history, match }) {
         return;
       }
     }
+
+    // Sinon première variante en stock
     if (variantId == null) {
       const firstOk = variants.find((v) => v.in_stock) || variants[0];
       setVariantId(firstOk?.id ?? null);
@@ -132,7 +139,7 @@ function ProductDetailsPage({ history, match }) {
     dispatch({ type: DELETE_PRODUCT_RESET });
   }
 
-  // Build full category list from `categories[]` or fallback to single `category`
+  // Build full category list
   const rawCats =
     Array.isArray(product?.categories) && product.categories.length
       ? product.categories
@@ -149,6 +156,7 @@ function ProductDetailsPage({ history, match }) {
 
   return (
     <div>
+      {/* Modal delete admin */}
       <Modal show={show} onHide={() => setShow(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Delete Confirmation</Modal.Title>
@@ -186,6 +194,7 @@ function ProductDetailsPage({ history, match }) {
       ) : (
         <Container className="pd">
           <Row className="gy-4">
+            {/* Col image */}
             <Col lg={6}>
               <div className="pd-media">
                 <div className="pd-media-frame">
@@ -200,6 +209,7 @@ function ProductDetailsPage({ history, match }) {
               </div>
             </Col>
 
+            {/* Col infos / actions */}
             <Col lg={6}>
               <div className="pd-card mb-3">
                 <h2 className="pd-title">{product?.name}</h2>
@@ -221,6 +231,7 @@ function ProductDetailsPage({ history, match }) {
                   )}
                 </div>
 
+                {/* Stock */}
                 <div className="mb-3">
                   {product?.stock ? (
                     <span className="pd-chip pd-chip--ok">
@@ -233,15 +244,14 @@ function ProductDetailsPage({ history, match }) {
                   )}
                 </div>
 
+                {/* Description */}
                 {product?.description && (
-                  <p
-                    className="pd-subtle"
-                    style={{ lineHeight: 1.7 }}
-                  >
+                  <p className="pd-subtle" style={{ lineHeight: 1.7 }}>
                     {product.description}
                   </p>
                 )}
 
+                {/* Variantes */}
                 {variants.length > 0 && (
                   <div className="mb-3">
                     <div className="pd-subtle mb-2">Taille / Format</div>
@@ -274,36 +284,40 @@ function ProductDetailsPage({ history, match }) {
                 )}
               </div>
 
+              {/* Bloc prix + quantité + actions */}
               <div className="pd-card">
+                {/* ==== Prix + Variante, style bandeau violet ==== */}
                 <div className="pd-price mb-3">
-                  <span className="pd-subtle">Prix</span>
-                  <div className="pd-price-wrap">
+                  <div className="pd-price-label pd-subtle">Prix</div>
+
+                  <div className="pd-price-main">
                     {hasDiscount &&
                     activeVariant &&
-                    String(activeVariant.id) ===
-                      String(promoVariantId) ? (
+                    String(activeVariant.id) === String(promoVariantId) ? (
                       <>
                         <span className="pd-price-old">
                           {fmtMAD(product.promo_variant_old_price)}
                         </span>
                         <span className="pd-sale-badge">-{percent}%</span>
-                        <strong className="pd-price-new">
+                        <span className="pd-price-new pd-price-new--promo">
                           {fmtMAD(product.promo_variant_new_price)}
-                        </strong>
+                        </span>
                       </>
                     ) : (
-                      <strong className="pd-price-new">
+                      <span className="pd-price-new">
                         {fmtMAD(unitPrice)}
-                      </strong>
+                      </span>
                     )}
                   </div>
-                  {activeVariant && (
-                    <div className="pd-subtle small mt-1">
-                      Variante : {activeVariant.label}
-                    </div>
-                  )}
+
+                  <div className="pd-price-variant pd-subtle small">
+                    {activeVariant
+                      ? `Variante : ${activeVariant.label}`
+                      : "Variante : —"}
+                  </div>
                 </div>
 
+                {/* Quantité */}
                 <div className="mb-3">
                   <div className="pd-subtle mb-2">Quantité</div>
                   <div className="pd-qty">
@@ -334,14 +348,14 @@ function ProductDetailsPage({ history, match }) {
                   </div>
                 </div>
 
+                {/* Actions */}
                 <div className="pd-actions mb-2">
                   <button
                     className="pd-btn-primary"
                     onClick={addToCart}
                     disabled={!product?.stock}
                   >
-                    <i className="fas fa-shopping-bag mr-2" /> Ajouter au
-                    panier
+                    <i className="fas fa-shopping-bag mr-2" /> Ajouter au panier
                   </button>
                   <button
                     onClick={handleToggleWishlist}
@@ -371,6 +385,7 @@ function ProductDetailsPage({ history, match }) {
                   )}
                 </div>
 
+                {/* Total */}
                 <div className="pd-total">
                   Total estimé : <b>{fmtMAD(total)}</b>
                 </div>
@@ -384,4 +399,3 @@ function ProductDetailsPage({ history, match }) {
 }
 
 export default ProductDetailsPage;
-
