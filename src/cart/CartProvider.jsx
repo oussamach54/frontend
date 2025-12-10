@@ -1,11 +1,5 @@
 // frontend/src/cart/CartProvider.js
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 
 const CartCtx = createContext(null);
@@ -31,31 +25,30 @@ function removeKey(key) {
 }
 
 export default function CartProvider({ children }) {
-  // 1) Utilisateur connecté (ou invité)
+  // 1) user
   const { userInfo } = useSelector((s) => s.userLoginReducer || {});
   const userId = userInfo?.id || userInfo?._id;
 
-  // 2) Clé de stockage dépend de l’utilisateur
+  // 2) key
   const cartKey = userId ? `cart:u:${userId}` : "cart:guest";
 
-  // 3) État local du panier
+  // 3) state
   const [items, setItems] = useState(() => load(cartKey));
   const [isOpen, setOpen] = useState(false);
 
-  // 4) Quand l’utilisateur change (login/logout), on recharge le panier
+  // reload when user changes
   useEffect(() => {
     setItems(load(cartKey));
   }, [cartKey]);
 
-  // 5) Persistance
+  // persist
   useEffect(() => {
     save(cartKey, items);
   }, [cartKey, items]);
 
-  // 6) Fusion “guest → user” au login
+  // merge guest → user at login
   useEffect(() => {
-    if (!userId) return; // rien à faire si invité
-
+    if (!userId) return;
     const guest = load("cart:guest");
     if (!guest.length) return;
 
@@ -64,42 +57,40 @@ export default function CartProvider({ children }) {
 
     for (const g of guest) {
       const i = merged.findIndex((x) => x.key === g.key);
-      if (i === -1) {
-        merged.push(g);
-      } else {
+      if (i === -1) merged.push(g);
+      else
         merged[i] = {
           ...merged[i],
           qty: Math.min(99, merged[i].qty + g.qty),
         };
-      }
     }
-
     save(`cart:u:${userId}`, merged);
     removeKey("cart:guest");
-    setItems(merged); // rehydrate UI
+    setItems(merged);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // ========== API DU PANIER ==========
+  // ========== FIXED addItem ==========
 
+  /**
+   * p : { id, name, price, image, variantId?, variantLabel? }
+   * meta : optional override { price?, variantId?, variantLabel? }
+   */
   const addItem = (p, qty = 1, meta = {}) => {
     setItems((prev) => {
-      // 🔹 On récupère d’abord dans meta, sinon dans p
+      // ✅ take variant info from meta OR from p (backwards compatible)
       const variantId = meta.variantId ?? p.variantId ?? null;
       const variantLabel = meta.variantLabel ?? p.variantLabel ?? null;
-      const unitPrice = Number(
-        meta.price ?? p.price ?? 0 // p.price = unitPrice dans tes appels
-      );
+      const price = Number(meta.price ?? p.price ?? 0);
 
       const idKey = `${p.id}${variantId ? `:${variantId}` : ""}`;
-
       const ix = prev.findIndex((x) => x.key === idKey);
 
       const base = {
         key: idKey,
         id: p.id,
         name: p.name,
-        price: unitPrice,
+        price,
         image: p.image,
         variantId,
         variantLabel,
@@ -113,7 +104,6 @@ export default function CartProvider({ children }) {
         };
         return clone;
       }
-
       return [...prev, { ...base, qty: Math.min(99, qty) }];
     });
 
