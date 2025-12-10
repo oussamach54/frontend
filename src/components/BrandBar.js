@@ -123,7 +123,7 @@ export default function BrandBar() {
         <div className="brandbar-logo logo-center">
           <Link to="/" className="brand-logo-link" aria-label="Accueil">
             <img
-              src="/brand/logop.png"
+              src="/brand/logov.png"
               alt="MiniGlowByshay"
               className="brand-logo-img"
             />

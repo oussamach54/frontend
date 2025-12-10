@@ -47,7 +47,7 @@ export default function ContactPage() {
         <header className="cc-head">
           <div className="cc-avatar">
             {/* Your logo — or keep initials */}
-            <img src="/brand/logop.png" alt="MiniGlow by Shay" />
+            <img src="/brand/logov.png" alt="MiniGlow by Shay" />
           </div>
           <div className="cc-title">
             <h2>Service Client</h2>

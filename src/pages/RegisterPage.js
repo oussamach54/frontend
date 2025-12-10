@@ -40,7 +40,7 @@ export default function RegisterPage({ history }) {
         {/* LEFT: brand/visual — identical style to Login */}
         <div className="auth-side">
           <div className="auth-brand">
-            <img src="/brand/logop.png" alt="MiniGlowbyshay" />
+            <img src="/brand/logov.png" alt="MiniGlowbyshay" />
           </div>
           <h2 className="auth-headline">Créez votre compte ✨</h2>
           <p className="auth-blurb">

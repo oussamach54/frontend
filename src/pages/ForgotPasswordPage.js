@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
       <div className="auth-card">
         <div className="auth-side">
           <div className="auth-brand">
-            <img src="/brand/logop.png" alt="MiniGlow" />
+            <img src="/brand/logov.png" alt="MiniGlow" />
           </div>
           <h2 className="auth-headline">Mot de passe oublié</h2>
           <p className="auth-blurb">

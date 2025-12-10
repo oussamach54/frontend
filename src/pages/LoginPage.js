@@ -37,7 +37,7 @@ export default function LoginPage({ history }) {
       <div className="auth-card">
         <div className="auth-side">
           <div className="auth-brand">
-            <img src="/brand/logop.png" alt="Beauty Shop" />
+            <img src="/brand/logov.png" alt="Beauty Shop" />
           </div>
           <h2 className="auth-headline">Ravivez votre éclat ✨</h2>
           <p className="auth-blurb">Des routines simples et efficaces. Connectez-vous pour poursuivre vos coups de cœur.</p>

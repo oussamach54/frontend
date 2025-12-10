@@ -51,7 +51,7 @@ export default function SiteFooter() {
           {/* Brand / blurb */}
           <Col lg={4} md={6}>
             <div className="sf-brand">
-              <img src="/brand/logop.png" alt="MiniGlow" className="sf-logo" />
+              <img src="/brand/logov.png" alt="MiniGlow" className="sf-logo" />
             </div>
             <p className="sf-text">
               MiniGlow by Shay, boutique en ligne de beauté coréenne, vous offre des
