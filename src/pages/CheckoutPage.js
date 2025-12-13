@@ -82,20 +82,16 @@ export default function CheckoutPage() {
           ...(isProdApp
             ? [
                 async () => {
-                  const res = await fetch(
-                    `${ABS_API}/api/payments/shipping-rates/`,
-                    { credentials: "omit" }
-                  );
-                  if (!res.ok)
-                    throw Object.assign(
-                      new Error(`HTTP ${res.status}`),
-                      { response: { status: res.status } }
-                    );
+                  const res = await fetch(`${ABS_API}/api/payments/shipping-rates/`, {
+                    credentials: "omit",
+                  });
+                  if (!res.ok) {
+                    throw Object.assign(new Error(`HTTP ${res.status}`), {
+                      response: { status: res.status },
+                    });
+                  }
                   const json = await res.json();
-                  return {
-                    data: json,
-                    hit: `abs:${ABS_API}/api/payments/shipping-rates/`,
-                  };
+                  return { data: json, hit: `abs:${ABS_API}/api/payments/shipping-rates/` };
                 },
               ]
             : []),
@@ -119,12 +115,10 @@ export default function CheckoutPage() {
         }
         console.warn("[Checkout] API returned empty list; using fallback.");
       } catch (e) {
-        console.warn(
-          "[Checkout] Failed to load API shipping rates; using fallback.",
-          e?.message || e
-        );
+        console.warn("[Checkout] Failed to load API shipping rates; using fallback.", e?.message || e);
       }
     })();
+
     return () => {
       alive = false;
     };
@@ -133,8 +127,7 @@ export default function CheckoutPage() {
   // Ville par défaut = Casablanca
   useEffect(() => {
     if (!rates.length) return;
-    const def =
-      rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
+    const def = rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
     setCity(def.city);
     setShippingPrice(Number(def.price || 0));
   }, [rates]);
@@ -147,9 +140,7 @@ export default function CheckoutPage() {
   // ===================== WHATSAPP =======================
   const buildWhatsAppUrl = (createdOrder) => {
     const lines = [];
-    lines.push(
-      `*${SHOP.BRAND}* – Nouvelle commande #${createdOrder?.id ?? "?"}`
-    );
+    lines.push(`*${SHOP.BRAND}* – Nouvelle commande #${createdOrder?.id ?? "?"}`);
     lines.push("");
     lines.push("*Articles :*");
 
@@ -157,9 +148,7 @@ export default function CheckoutPage() {
       const q = Number(it.qty || 1);
       const p = Number(it.price).toFixed(2);
       lines.push(
-        `• ${it.name}${
-          it.variantLabel ? " (" + it.variantLabel + ")" : ""
-        } — ${p} MAD × ${q}`
+        `• ${it.name}${it.variantLabel ? " (" + it.variantLabel + ")" : ""} — ${p} MAD × ${q}`
       );
     });
 
@@ -174,27 +163,34 @@ export default function CheckoutPage() {
     lines.push("");
     lines.push("*Coordonnées :*");
     if (email) lines.push(`Email : ${email}`);
-    lines.push(
-      `Nom : ${(first || "").trim()} ${(last || "").trim()}`.trim()
-    );
+    lines.push(`Nom : ${(first || "").trim()} ${(last || "").trim()}`.trim());
     lines.push(`Téléphone : ${phone || "-"}`);
     lines.push(
-      `Adresse : ${addr}${apt ? ", " + apt : ""}${
-        zip ? ", " + zip : ""
-      }${city ? " – " + city : ""}`.trim()
+      `Adresse : ${addr}${apt ? ", " + apt : ""}${zip ? ", " + zip : ""}${city ? " – " + city : ""}`.trim()
     );
     lines.push("");
     lines.push("Merci de confirmer ma commande 🙏");
 
     const msg = encodeURIComponent(lines.join("\n"));
 
-    // ✅ VERSION 100% COMPATIBLE (fix users seeing blank page)
-    return `https://api.whatsapp.com/send?phone=${SHOP.WHATSAPP}&text=${msg}`;
+    // ✅ le plus stable (évite whatsapp://)
+    return `https://wa.me/${SHOP.WHATSAPP}?text=${msg}`;
+  };
+
+  // ✅ redirection avec fallback anti “page blanche”
+  const goToWhatsApp = (url) => {
+    try {
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (!opened) window.location.assign(url);
+    } catch {
+      window.location.assign(url);
+    }
   };
 
   // ===================== SUBMIT =======================
   const submit = async () => {
     setErr("");
+
     if (!items.length) {
       setErr("Votre panier est vide.");
       return;
@@ -208,19 +204,14 @@ export default function CheckoutPage() {
       setLoading(true);
 
       const full_name =
-        `${(first || "").trim()} ${(last || "").trim()}`.trim() ||
-        last ||
-        first ||
-        "Client";
+        `${(first || "").trim()} ${(last || "").trim()}`.trim() || last || first || "Client";
 
       const payload = {
         full_name,
         email,
         phone,
         city,
-        address: `${addr}${apt ? ", " + apt : ""}${
-          zip ? ", " + zip : ""
-        }`.trim(),
+        address: `${addr}${apt ? ", " + apt : ""}${zip ? ", " + zip : ""}`.trim(),
         notes: "",
         payment_method: "cod",
         shipping_price: Number(shippingPrice || 0),
@@ -240,14 +231,10 @@ export default function CheckoutPage() {
       // 3) vider panier
       clear();
 
-      // 4) redirection WHATSAPP dans même onglet
-      window.location.href = wa;
+      // 4) redirection WHATSAPP (stable + fallback)
+      goToWhatsApp(wa);
     } catch (e) {
-      setErr(
-        e?.response?.data?.detail ||
-          e.message ||
-          "Impossible d’enregistrer la commande."
-      );
+      setErr(e?.response?.data?.detail || e.message || "Impossible d’enregistrer la commande.");
     } finally {
       setLoading(false);
     }
@@ -307,10 +294,7 @@ export default function CheckoutPage() {
             {rates.map((r) => {
               const checked = r.city === city;
               return (
-                <label
-                  key={r.city}
-                  className={`co-ship-row ${checked ? "is-active" : ""}`}
-                >
+                <label key={r.city} className={`co-ship-row ${checked ? "is-active" : ""}`}>
                   <input
                     type="radio"
                     name="ship"
@@ -321,9 +305,7 @@ export default function CheckoutPage() {
                     }}
                   />
                   <span className="co-ship-city">{r.city}</span>
-                  <span className="co-ship-price">
-                    {Number(r.price).toFixed(2)} MAD
-                  </span>
+                  <span className="co-ship-price">{Number(r.price).toFixed(2)} MAD</span>
                 </label>
               );
             })}
@@ -337,9 +319,8 @@ export default function CheckoutPage() {
             <div>
               <div className="co-pay-title">Paiement à la livraison</div>
               <div className="co-pay-help">
-                Paiement à la livraison disponible dans toutes les villes du
-                Maroc. Pas besoin de payer en ligne. La confirmation se fait sur
-                WhatsApp.
+                Paiement à la livraison disponible dans toutes les villes du Maroc. Pas besoin de payer en ligne.
+                La confirmation se fait sur WhatsApp.
               </div>
             </div>
           </div>
@@ -368,14 +349,8 @@ export default function CheckoutPage() {
                     <img src={i.image} alt={i.name} />
                     <div className="co-item-info">
                       <div className="co-item-name">{i.name}</div>
-                      {i.variantLabel && (
-                        <div className="co-item-variant">
-                          {i.variantLabel}
-                        </div>
-                      )}
-                      <div className="co-item-qty">
-                        × {i.qty || 1}
-                      </div>
+                      {i.variantLabel && <div className="co-item-variant">{i.variantLabel}</div>}
+                      <div className="co-item-qty">× {i.qty || 1}</div>
                     </div>
                     <div className="co-item-price">
                       {(Number(i.price) * Number(i.qty || 1)).toFixed(2)} MAD
