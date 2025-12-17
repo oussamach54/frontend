@@ -1,5 +1,4 @@
 // frontend/src/pages/CheckoutPage.js
-// ok
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert } from "react-bootstrap";
 import api from "../api";
@@ -39,6 +38,11 @@ async function tryUrls(calls) {
   throw lastErr || new Error("All endpoint candidates failed");
 }
 
+function normalizePhone(p) {
+  // WhatsApp wa.me veut uniquement des chiffres
+  return String(p || "").replace(/[^\d]/g, "");
+}
+
 export default function CheckoutPage() {
   const { items, totals, clear } = useCart();
 
@@ -58,6 +62,10 @@ export default function CheckoutPage() {
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+
+  // ✅ NOUVEAU: après création commande, on affiche un bouton WhatsApp
+  const [createdOrderId, setCreatedOrderId] = useState(null);
+  const [whatsAppUrl, setWhatsAppUrl] = useState("");
 
   // Chargement des tarifs de livraison
   useEffect(() => {
@@ -85,11 +93,10 @@ export default function CheckoutPage() {
                   const res = await fetch(`${ABS_API}/api/payments/shipping-rates/`, {
                     credentials: "omit",
                   });
-                  if (!res.ok) {
+                  if (!res.ok)
                     throw Object.assign(new Error(`HTTP ${res.status}`), {
                       response: { status: res.status },
                     });
-                  }
                   const json = await res.json();
                   return { data: json, hit: `abs:${ABS_API}/api/payments/shipping-rates/` };
                 },
@@ -107,13 +114,13 @@ export default function CheckoutPage() {
             }))
             .filter((r) => r.city)
             .sort((a, b) => a.city.localeCompare(b.city, "fr"));
+
           if (normalized.length) {
             console.log("[Checkout] Shipping rates loaded from:", hit);
             setRates(normalized);
             return;
           }
         }
-        console.warn("[Checkout] API returned empty list; using fallback.");
       } catch (e) {
         console.warn("[Checkout] Failed to load API shipping rates; using fallback.", e?.message || e);
       }
@@ -137,10 +144,9 @@ export default function CheckoutPage() {
     [totals.subtotal, shippingPrice]
   );
 
-  // ===================== WHATSAPP =======================
-  const buildWhatsAppUrl = (createdOrder) => {
+  const buildWhatsAppUrl = (orderId) => {
     const lines = [];
-    lines.push(`*${SHOP.BRAND}* – Nouvelle commande #${createdOrder?.id ?? "?"}`);
+    lines.push(`*${SHOP.BRAND}* – Nouvelle commande #${orderId ?? "?"}`);
     lines.push("");
     lines.push("*Articles :*");
 
@@ -173,32 +179,15 @@ export default function CheckoutPage() {
 
     const msg = encodeURIComponent(lines.join("\n"));
 
-    // ✅ le plus stable (évite whatsapp://)
-    return `https://wa.me/${SHOP.WHATSAPP}?text=${msg}`;
+    const to = normalizePhone(SHOP.WHATSAPP);
+    return `https://wa.me/${to}?text=${msg}`;
   };
 
-  // ✅ redirection avec fallback anti “page blanche”
-  const goToWhatsApp = (url) => {
-    try {
-      const opened = window.open(url, "_blank", "noopener,noreferrer");
-      if (!opened) window.location.assign(url);
-    } catch {
-      window.location.assign(url);
-    }
-  };
-
-  // ===================== SUBMIT =======================
   const submit = async () => {
     setErr("");
 
-    if (!items.length) {
-      setErr("Votre panier est vide.");
-      return;
-    }
-    if (!addr || !city || !phone) {
-      setErr("Adresse, ville et téléphone sont obligatoires.");
-      return;
-    }
+    if (!items.length) return setErr("Votre panier est vide.");
+    if (!addr || !city || !phone) return setErr("Adresse, ville et téléphone sont obligatoires.");
 
     try {
       setLoading(true);
@@ -222,24 +211,55 @@ export default function CheckoutPage() {
         })),
       };
 
-      // 1) backend : création commande
       const order = await createOrder(payload);
 
-      // 2) construire URL WhatsApp
-      const wa = buildWhatsAppUrl(order);
+      // ✅ on construit l’URL WhatsApp
+      const wa = buildWhatsAppUrl(order?.id);
 
-      // 3) vider panier
+      // ✅ on vide le panier
       clear();
 
-      // 4) redirection WHATSAPP (stable + fallback)
-      goToWhatsApp(wa);
+      // ✅ on affiche l’écran “ouvrir WhatsApp”
+      setCreatedOrderId(order?.id ?? null);
+      setWhatsAppUrl(wa);
     } catch (e) {
-      setErr(e?.response?.data?.detail || e.message || "Impossible d’enregistrer la commande.");
+      setErr(e?.response?.data?.detail || e?.message || "Impossible d’enregistrer la commande.");
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ ÉCRAN POST-COMMANDE : bouton WhatsApp (user gesture = pas de blocage)
+  if (createdOrderId && whatsAppUrl) {
+    return (
+      <div className="co-wrap" style={{ justifyContent: "center" }}>
+        <div className="co-left" style={{ maxWidth: 520 }}>
+          <h2 className="co-title">Commande enregistrée ✅</h2>
+          <p style={{ color: "#6b7280" }}>
+            Votre commande <b>#{createdOrderId}</b> est bien enregistrée.
+            Cliquez sur le bouton ci-dessous pour ouvrir WhatsApp et confirmer.
+          </p>
+
+          <a
+            href={whatsAppUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="co-submit"
+            style={{ display: "inline-block", textAlign: "center" }}
+          >
+            Ouvrir WhatsApp
+          </a>
+
+          <div style={{ marginTop: 12, fontSize: 13, color: "#6b7280" }}>
+            Si WhatsApp ne s’ouvre pas, copiez/collez ce lien dans votre navigateur :
+            <div style={{ wordBreak: "break-all", marginTop: 6 }}>{whatsAppUrl}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Checkout normal
   return (
     <div className="co-wrap">
       <div className="co-left">
@@ -312,20 +332,6 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        <div className="co-block">
-          <div className="co-block-title">Paiement</div>
-          <div className="co-pay-row">
-            <input type="radio" checked readOnly />
-            <div>
-              <div className="co-pay-title">Paiement à la livraison</div>
-              <div className="co-pay-help">
-                Paiement à la livraison disponible dans toutes les villes du Maroc. Pas besoin de payer en ligne.
-                La confirmation se fait sur WhatsApp.
-              </div>
-            </div>
-          </div>
-        </div>
-
         {err && (
           <Alert variant="danger" className="mt-2">
             {err}
@@ -333,7 +339,7 @@ export default function CheckoutPage() {
         )}
 
         <button className="co-submit" onClick={submit} disabled={loading}>
-          {loading ? "Redirection vers WhatsApp…" : "Valider la commande"}
+          {loading ? "Enregistrement…" : "Valider la commande"}
         </button>
       </div>
 
@@ -365,11 +371,11 @@ export default function CheckoutPage() {
               </div>
               <div className="co-line">
                 <span>Expédition</span>
-                <b>{Number(shippingPrice).toFixed(2)} MAD</b>
+                <b>{Number(shippingPrice || 0).toFixed(2)} MAD</b>
               </div>
               <div className="co-total">
                 <span>Total</span>
-                <b>{Number(total).toFixed(2)} MAD</b>
+                <b>{Number(total || 0).toFixed(2)} MAD</b>
               </div>
             </>
           )}
