@@ -36,20 +36,18 @@ export default function ProductCreatePage() {
   const [image, setImage] = useState(null);
 
   const [brand, setBrand] = useState("");
-  // multi categories
   const [categories, setCategories] = useState(["other"]);
-
-  // ⭐ NEW: produit favori
   const [isFavorite, setIsFavorite] = useState(false);
 
+  // ✅ NEW: new_price per variant
   const [variants, setVariants] = useState([
-    { label: "", size_ml: "", price: "", in_stock: true, sku: "" },
+    { label: "", size_ml: "", price: "", new_price: "", in_stock: true, sku: "" },
   ]);
 
   const addVariantRow = () =>
     setVariants((v) => [
       ...v,
-      { label: "", size_ml: "", price: "", in_stock: true, sku: "" },
+      { label: "", size_ml: "", price: "", new_price: "", in_stock: true, sku: "" },
     ]);
 
   const removeVariantRow = (idx) =>
@@ -80,18 +78,15 @@ export default function ProductCreatePage() {
     const base = parseFloat(norm(price));
     const pct = parseFloat(norm(discountPct));
     if (!isFinite(base) || !isFinite(pct) || base <= 0 || pct <= 0) return;
-    setNewPrice(String(+(base * (100 - pct) / 100).toFixed(2)));
+    setNewPrice(String(+((base * (100 - pct)) / 100).toFixed(2)));
   };
 
-  // toggle pill-style categories
   const toggleCategory = (slug) => {
     setCategories((prev) => {
       if (prev.includes(slug)) {
-        // éviter 0 catégories – garder "other" en fallback
         const next = prev.filter((c) => c !== slug);
         return next.length ? next : ["other"];
       }
-      // enlever "other" quand on ajoute une vraie catégorie
       const base = prev.filter((c) => c !== "other");
       return [...base, slug];
     });
@@ -112,7 +107,6 @@ export default function ProductCreatePage() {
     fd.append("category", primary);
     fd.append("categories", JSON.stringify(categories));
 
-    // ⭐ envoyer favori au backend
     fd.append("is_favorite", isFavorite ? "true" : "false");
 
     const clean = variants
@@ -121,6 +115,7 @@ export default function ProductCreatePage() {
         label: v.label,
         size_ml: v.size_ml === "" ? null : Number(norm(v.size_ml)),
         price: Number(norm(v.price)),
+        new_price: v.new_price === "" ? null : Number(norm(v.new_price)), // ✅ added
         in_stock: !!v.in_stock,
         sku: v.sku || "",
       }));
@@ -132,10 +127,7 @@ export default function ProductCreatePage() {
   useEffect(() => {
     if (!success) return;
     const newId =
-      product?.id ??
-      product?.product?.id ??
-      product?.product_id ??
-      null;
+      product?.id ?? product?.product?.id ?? product?.product_id ?? null;
     history.replace(newId ? `/product/${newId}/` : "/products");
     dispatch({ type: CREATE_PRODUCT_RESET });
   }, [success, product, history, dispatch]);
@@ -197,7 +189,6 @@ export default function ProductCreatePage() {
           />
         </Form.Group>
 
-        {/* Multi-catégories */}
         <Form.Group controlId="category">
           <Form.Label>
             <b>Categories</b>
@@ -284,7 +275,6 @@ export default function ProductCreatePage() {
           />
         </div>
 
-        {/* ⭐ Produit favori */}
         <div className="d-flex align-items-center mb-3">
           <Form.Label className="mb-0">Produit favori (homepage)</Form.Label>
           <Form.Check
@@ -309,6 +299,7 @@ export default function ProductCreatePage() {
           <Form.Label>
             <b>Sizes / Variants (optional)</b>
           </Form.Label>
+
           {variants.map((row, i) => (
             <div
               key={i}
@@ -319,43 +310,43 @@ export default function ProductCreatePage() {
                 style={{ maxWidth: 240 }}
                 placeholder="Label (e.g. 500 ml)"
                 value={row.label}
-                onChange={(e) =>
-                  changeVariant(i, "label", e.target.value)
-                }
+                onChange={(e) => changeVariant(i, "label", e.target.value)}
               />
               <Form.Control
                 type="text"
                 style={{ maxWidth: 120 }}
                 placeholder="Size ml (opt.)"
                 value={row.size_ml}
-                onChange={(e) =>
-                  changeVariant(i, "size_ml", e.target.value)
-                }
+                onChange={(e) => changeVariant(i, "size_ml", e.target.value)}
               />
               <Form.Control
                 type="text"
                 style={{ maxWidth: 140 }}
                 placeholder="Price"
                 value={row.price}
-                onChange={(e) =>
-                  changeVariant(i, "price", e.target.value)
-                }
+                onChange={(e) => changeVariant(i, "price", e.target.value)}
               />
+
+              {/* ✅ NEW promo per variant */}
+              <Form.Control
+                type="text"
+                style={{ maxWidth: 140 }}
+                placeholder="Promo price"
+                value={row.new_price}
+                onChange={(e) => changeVariant(i, "new_price", e.target.value)}
+              />
+
               <Form.Check
                 className="ml-2"
                 label="In stock"
                 checked={row.in_stock}
-                onChange={(e) =>
-                  changeVariant(i, "in_stock", e.target.checked)
-                }
+                onChange={(e) => changeVariant(i, "in_stock", e.target.checked)}
               />
               <Form.Control
                 style={{ maxWidth: 140 }}
                 placeholder="SKU (opt.)"
                 value={row.sku}
-                onChange={(e) =>
-                  changeVariant(i, "sku", e.target.value)
-                }
+                onChange={(e) => changeVariant(i, "sku", e.target.value)}
               />
               <Button
                 variant="outline-danger"
@@ -367,6 +358,7 @@ export default function ProductCreatePage() {
               </Button>
             </div>
           ))}
+
           <Button
             variant="outline-secondary"
             size="sm"
@@ -377,11 +369,7 @@ export default function ProductCreatePage() {
           </Button>
         </Form.Group>
 
-        <Button
-          type="submit"
-          variant="success"
-          className="btn-sm button-focus-css"
-        >
+        <Button type="submit" variant="success" className="btn-sm button-focus-css">
           Save Product
         </Button>
         <Button
@@ -396,4 +384,3 @@ export default function ProductCreatePage() {
     </div>
   );
 }
-

@@ -1,4 +1,3 @@
-// src/pages/ProductDetailsPage.js
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Spinner, Row, Col, Container, Button, Modal } from "react-bootstrap";
@@ -16,7 +15,6 @@ import { productImage } from "../utils/media";
 
 import "./ProductDetailsPage.css";
 
-// ✅ Category labels mapping
 const CATEGORY_LABELS = {
   face: "Visage",
   lips: "Lèvres",
@@ -70,7 +68,6 @@ function ProductDetailsPage({ history, match }) {
   useEffect(() => {
     if (!variants.length) return;
 
-    // Si promo, on sélectionne la variante promo par défaut
     if (hasDiscount && promoVariantId && variantId == null) {
       const pv = variants.find((v) => String(v.id) === String(promoVariantId));
       if (pv) {
@@ -79,18 +76,22 @@ function ProductDetailsPage({ history, match }) {
       }
     }
 
-    // Sinon première variante en stock
     if (variantId == null) {
       const firstOk = variants.find((v) => v.in_stock) || variants[0];
       setVariantId(firstOk?.id ?? null);
     }
   }, [variants, hasDiscount, promoVariantId, variantId]);
 
+  // ✅ promo per selected variant
+  const variantHasPromo =
+    activeVariant &&
+    activeVariant.new_price != null &&
+    Number(activeVariant.new_price) > 0 &&
+    Number(activeVariant.new_price) < Number(activeVariant.price);
+
   const unitPrice = (() => {
     if (activeVariant) {
-      if (hasDiscount && String(activeVariant.id) === String(promoVariantId)) {
-        return Number(product?.promo_variant_new_price || activeVariant.price);
-      }
+      if (variantHasPromo) return Number(activeVariant.new_price);
       return Number(activeVariant.price || 0);
     }
     if (hasDiscount) return Number(product?.new_price || product?.price || 0);
@@ -139,7 +140,6 @@ function ProductDetailsPage({ history, match }) {
     dispatch({ type: DELETE_PRODUCT_RESET });
   }
 
-  // Build full category list
   const rawCats =
     Array.isArray(product?.categories) && product.categories.length
       ? product.categories
@@ -156,7 +156,6 @@ function ProductDetailsPage({ history, match }) {
 
   return (
     <div>
-      {/* Modal delete admin */}
       <Modal show={show} onHide={() => setShow(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Delete Confirmation</Modal.Title>
@@ -194,27 +193,25 @@ function ProductDetailsPage({ history, match }) {
       ) : (
         <Container className="pd">
           <Row className="gy-4">
-            {/* Col image */}
             <Col lg={6}>
               <div className="pd-media">
                 <div className="pd-media-frame">
                   <img src={productImage(product)} alt={product?.name} />
-                  {hasDiscount &&
-                    String(variantId) === String(promoVariantId) && (
-                      <span className="pd-sale-badge pd-sale-badge--media">
-                        -{percent}%
-                      </span>
-                    )}
+                  {(variantHasPromo ||
+                    (hasDiscount &&
+                      String(variantId) === String(promoVariantId))) && (
+                    <span className="pd-sale-badge pd-sale-badge--media">
+                      SALE
+                    </span>
+                  )}
                 </div>
               </div>
             </Col>
 
-            {/* Col infos / actions */}
             <Col lg={6}>
               <div className="pd-card mb-3">
                 <h2 className="pd-title">{product?.name}</h2>
 
-                {/* Catégories */}
                 <div className="pd-subtle mb-3">
                   Catégorie(s)&nbsp;:
                   {prettyCats.length ? (
@@ -231,7 +228,6 @@ function ProductDetailsPage({ history, match }) {
                   )}
                 </div>
 
-                {/* Stock */}
                 <div className="mb-3">
                   {product?.stock ? (
                     <span className="pd-chip pd-chip--ok">
@@ -244,56 +240,67 @@ function ProductDetailsPage({ history, match }) {
                   )}
                 </div>
 
-                {/* Description */}
                 {product?.description && (
                   <p className="pd-subtle" style={{ lineHeight: 1.7 }}>
                     {product.description}
                   </p>
                 )}
 
-                {/* Variantes */}
                 {variants.length > 0 && (
                   <div className="mb-3">
                     <div className="pd-subtle mb-2">Taille / Format</div>
                     <div className="pd-variants">
-                      {variants.map((v) => (
-                        <button
-                          key={v.id}
-                          type="button"
-                          className={`pd-variant-pill${
-                            String(variantId) === String(v.id)
-                              ? " is-active"
-                              : ""
-                          }`}
-                          disabled={!v.in_stock}
-                          onClick={() => setVariantId(v.id)}
-                          title={!v.in_stock ? "Indisponible" : v.label}
-                          data-price={fmtMAD(v.price)}
-                        >
-                          {v.label}
-                          {hasDiscount &&
-                            String(v.id) === String(promoVariantId) && (
+                      {variants.map((v) => {
+                        const hasVPromo =
+                          v.new_price != null &&
+                          Number(v.new_price) > 0 &&
+                          Number(v.new_price) < Number(v.price);
+
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            className={`pd-variant-pill${
+                              String(variantId) === String(v.id)
+                                ? " is-active"
+                                : ""
+                            }`}
+                            disabled={!v.in_stock}
+                            onClick={() => setVariantId(v.id)}
+                            title={!v.in_stock ? "Indisponible" : v.label}
+                            data-price={fmtMAD(v.price)}
+                          >
+                            {v.label}
+                            {hasVPromo && (
                               <span className="ml-2 small text-danger font-weight-bold">
-                                −{percent}%
+                                PROMO
                               </span>
                             )}
-                        </button>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Bloc prix + quantité + actions */}
               <div className="pd-card">
-                {/* ==== Prix + Variante, style bandeau violet ==== */}
                 <div className="pd-price mb-3">
                   <div className="pd-price-label pd-subtle">Prix</div>
 
                   <div className="pd-price-main">
-                    {hasDiscount &&
-                    activeVariant &&
-                    String(activeVariant.id) === String(promoVariantId) ? (
+                    {variantHasPromo ? (
+                      <>
+                        <span className="pd-price-old">
+                          {fmtMAD(activeVariant.price)}
+                        </span>
+                        <span className="pd-price-new pd-price-new--promo">
+                          {fmtMAD(activeVariant.new_price)}
+                        </span>
+                      </>
+                    ) : hasDiscount &&
+                      activeVariant &&
+                      String(activeVariant.id) === String(promoVariantId) ? (
                       <>
                         <span className="pd-price-old">
                           {fmtMAD(product.promo_variant_old_price)}
@@ -304,9 +311,7 @@ function ProductDetailsPage({ history, match }) {
                         </span>
                       </>
                     ) : (
-                      <span className="pd-price-new">
-                        {fmtMAD(unitPrice)}
-                      </span>
+                      <span className="pd-price-new">{fmtMAD(unitPrice)}</span>
                     )}
                   </div>
 
@@ -317,16 +322,10 @@ function ProductDetailsPage({ history, match }) {
                   </div>
                 </div>
 
-                {/* Quantité */}
                 <div className="mb-3">
                   <div className="pd-subtle mb-2">Quantité</div>
                   <div className="pd-qty">
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={minus}
-                      aria-label="minus"
-                    >
+                    <button type="button" className="btn" onClick={minus} aria-label="minus">
                       &minus;
                     </button>
                     <input
@@ -337,55 +336,31 @@ function ProductDetailsPage({ history, match }) {
                           setQty(Math.max(1, Math.min(99, v)));
                       }}
                     />
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={plus}
-                      aria-label="plus"
-                    >
+                    <button type="button" className="btn" onClick={plus} aria-label="plus">
                       +
                     </button>
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="pd-actions mb-2">
-                  <button
-                    className="pd-btn-primary"
-                    onClick={addToCart}
-                    disabled={!product?.stock}
-                  >
+                  <button className="pd-btn-primary" onClick={addToCart} disabled={!product?.stock}>
                     <i className="fas fa-shopping-bag mr-2" /> Ajouter au panier
                   </button>
-                  <button
-                    onClick={handleToggleWishlist}
-                    className="pd-btn-outline"
-                  >
-                    {inWishlist
-                      ? "💔 Retirer de ma wishlist"
-                      : "🤍 Ajouter à ma wishlist"}
+                  <button onClick={handleToggleWishlist} className="pd-btn-outline">
+                    {inWishlist ? "💔 Retirer de ma wishlist" : "🤍 Ajouter à ma wishlist"}
                   </button>
                   {userInfo && userInfo.admin && (
                     <>
-                      <button
-                        className="pd-btn-outline"
-                        onClick={() =>
-                          history.push(`/product-update/${product.id}/`)
-                        }
-                      >
+                      <button className="pd-btn-outline" onClick={() => history.push(`/product-update/${product.id}/`)}>
                         Edit Product
                       </button>
-                      <button
-                        className="pd-btn-outline"
-                        onClick={() => setShow(true)}
-                      >
+                      <button className="pd-btn-outline" onClick={() => setShow(true)}>
                         Delete Product
                       </button>
                     </>
                   )}
                 </div>
 
-                {/* Total */}
                 <div className="pd-total">
                   Total estimé : <b>{fmtMAD(total)}</b>
                 </div>
