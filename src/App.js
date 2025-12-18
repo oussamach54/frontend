@@ -48,6 +48,8 @@ import MyOrdersPage from "./pages/OrdersMyPage";
 import AdminOrdersPage from "./pages/AdminOrdersPage"; // optionnel
 import OrderDetailPage from "./pages/OrderDetailPage"; 
 import AdminOrderDetailPage from "./pages/AdminOrderDetailPage";
+import ThankYouPage from "./pages/ThankYouPage";
+
 
 const App = () => {
   return (
@@ -116,6 +118,8 @@ const App = () => {
             <Route path="/order/:id" component={OrderDetailPage} exact />
             <Route path="/admin/orders" component={AdminOrdersPage} exact />
             <Route path="/admin/orders/:id/" exact component={AdminOrderDetailPage} />
+            <Route path="/thank-you" exact component={ThankYouPage} />
+
             
 
             {/* 404 fallback */}

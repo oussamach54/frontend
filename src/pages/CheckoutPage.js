@@ -39,7 +39,7 @@ async function tryUrls(calls) {
 }
 
 function normalizePhone(p) {
-  // WhatsApp wa.me veut uniquement des chiffres
+  // wa.me veut uniquement des chiffres
   return String(p || "").replace(/[^\d]/g, "");
 }
 
@@ -62,10 +62,6 @@ export default function CheckoutPage() {
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
-
-  // ✅ NOUVEAU: après création commande, on affiche un bouton WhatsApp
-  const [createdOrderId, setCreatedOrderId] = useState(null);
-  const [whatsAppUrl, setWhatsAppUrl] = useState("");
 
   // Chargement des tarifs de livraison
   useEffect(() => {
@@ -90,21 +86,26 @@ export default function CheckoutPage() {
           ...(isProdApp
             ? [
                 async () => {
-                  const res = await fetch(`${ABS_API}/api/payments/shipping-rates/`, {
-                    credentials: "omit",
-                  });
+                  const res = await fetch(
+                    `${ABS_API}/api/payments/shipping-rates/`,
+                    { credentials: "omit" }
+                  );
                   if (!res.ok)
                     throw Object.assign(new Error(`HTTP ${res.status}`), {
                       response: { status: res.status },
                     });
                   const json = await res.json();
-                  return { data: json, hit: `abs:${ABS_API}/api/payments/shipping-rates/` };
+                  return {
+                    data: json,
+                    hit: `abs:${ABS_API}/api/payments/shipping-rates/`,
+                  };
                 },
               ]
             : []),
         ]);
 
         if (!alive) return;
+
         if (Array.isArray(data) && data.length) {
           const normalized = data
             .filter((r) => r.active !== false)
@@ -121,8 +122,13 @@ export default function CheckoutPage() {
             return;
           }
         }
+
+        console.warn("[Checkout] API returned empty list; using fallback.");
       } catch (e) {
-        console.warn("[Checkout] Failed to load API shipping rates; using fallback.", e?.message || e);
+        console.warn(
+          "[Checkout] Failed to load API shipping rates; using fallback.",
+          e?.message || e
+        );
       }
     })();
 
@@ -134,7 +140,8 @@ export default function CheckoutPage() {
   // Ville par défaut = Casablanca
   useEffect(() => {
     if (!rates.length) return;
-    const def = rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
+    const def =
+      rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
     setCity(def.city);
     setShippingPrice(Number(def.price || 0));
   }, [rates]);
@@ -172,14 +179,17 @@ export default function CheckoutPage() {
     lines.push(`Nom : ${(first || "").trim()} ${(last || "").trim()}`.trim());
     lines.push(`Téléphone : ${phone || "-"}`);
     lines.push(
-      `Adresse : ${addr}${apt ? ", " + apt : ""}${zip ? ", " + zip : ""}${city ? " – " + city : ""}`.trim()
+      `Adresse : ${addr}${apt ? ", " + apt : ""}${zip ? ", " + zip : ""}${
+        city ? " – " + city : ""
+      }`.trim()
     );
     lines.push("");
     lines.push("Merci de confirmer ma commande 🙏");
 
     const msg = encodeURIComponent(lines.join("\n"));
-
     const to = normalizePhone(SHOP.WHATSAPP);
+
+    // ✅ wa.me fonctionne mieux (mobile + desktop)
     return `https://wa.me/${to}?text=${msg}`;
   };
 
@@ -187,13 +197,17 @@ export default function CheckoutPage() {
     setErr("");
 
     if (!items.length) return setErr("Votre panier est vide.");
-    if (!addr || !city || !phone) return setErr("Adresse, ville et téléphone sont obligatoires.");
+    if (!addr || !city || !phone)
+      return setErr("Adresse, ville et téléphone sont obligatoires.");
 
     try {
       setLoading(true);
 
       const full_name =
-        `${(first || "").trim()} ${(last || "").trim()}`.trim() || last || first || "Client";
+        `${(first || "").trim()} ${(last || "").trim()}`.trim() ||
+        last ||
+        first ||
+        "Client";
 
       const payload = {
         full_name,
@@ -211,55 +225,34 @@ export default function CheckoutPage() {
         })),
       };
 
+      // 1) créer la commande backend
       const order = await createOrder(payload);
 
-      // ✅ on construit l’URL WhatsApp
+      // 2) construire URL WhatsApp
       const wa = buildWhatsAppUrl(order?.id);
 
-      // ✅ on vide le panier
+      // 3) sauvegarder pour la page merci (important: avant clear)
+      try {
+        sessionStorage.setItem("wa_url", wa);
+        sessionStorage.setItem("order_id", String(order?.id || ""));
+      } catch {}
+
+      // 4) vider panier
       clear();
 
-      // ✅ on affiche l’écran “ouvrir WhatsApp”
-      setCreatedOrderId(order?.id ?? null);
-      setWhatsAppUrl(wa);
+      // 5) redirection vers page Merci (le bouton WhatsApp sera un vrai "user click")
+      window.location.href = "/thank-you";
     } catch (e) {
-      setErr(e?.response?.data?.detail || e?.message || "Impossible d’enregistrer la commande.");
+      setErr(
+        e?.response?.data?.detail ||
+          e?.message ||
+          "Impossible d’enregistrer la commande."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ ÉCRAN POST-COMMANDE : bouton WhatsApp (user gesture = pas de blocage)
-  if (createdOrderId && whatsAppUrl) {
-    return (
-      <div className="co-wrap" style={{ justifyContent: "center" }}>
-        <div className="co-left" style={{ maxWidth: 520 }}>
-          <h2 className="co-title">Commande enregistrée ✅</h2>
-          <p style={{ color: "#6b7280" }}>
-            Votre commande <b>#{createdOrderId}</b> est bien enregistrée.
-            Cliquez sur le bouton ci-dessous pour ouvrir WhatsApp et confirmer.
-          </p>
-
-          <a
-            href={whatsAppUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="co-submit"
-            style={{ display: "inline-block", textAlign: "center" }}
-          >
-            Ouvrir WhatsApp
-          </a>
-
-          <div style={{ marginTop: 12, fontSize: 13, color: "#6b7280" }}>
-            Si WhatsApp ne s’ouvre pas, copiez/collez ce lien dans votre navigateur :
-            <div style={{ wordBreak: "break-all", marginTop: 6 }}>{whatsAppUrl}</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ✅ Checkout normal
   return (
     <div className="co-wrap">
       <div className="co-left">
@@ -314,7 +307,10 @@ export default function CheckoutPage() {
             {rates.map((r) => {
               const checked = r.city === city;
               return (
-                <label key={r.city} className={`co-ship-row ${checked ? "is-active" : ""}`}>
+                <label
+                  key={r.city}
+                  className={`co-ship-row ${checked ? "is-active" : ""}`}
+                >
                   <input
                     type="radio"
                     name="ship"
@@ -325,7 +321,9 @@ export default function CheckoutPage() {
                     }}
                   />
                   <span className="co-ship-city">{r.city}</span>
-                  <span className="co-ship-price">{Number(r.price).toFixed(2)} MAD</span>
+                  <span className="co-ship-price">
+                    {Number(r.price).toFixed(2)} MAD
+                  </span>
                 </label>
               );
             })}
@@ -355,7 +353,9 @@ export default function CheckoutPage() {
                     <img src={i.image} alt={i.name} />
                     <div className="co-item-info">
                       <div className="co-item-name">{i.name}</div>
-                      {i.variantLabel && <div className="co-item-variant">{i.variantLabel}</div>}
+                      {i.variantLabel && (
+                        <div className="co-item-variant">{i.variantLabel}</div>
+                      )}
                       <div className="co-item-qty">× {i.qty || 1}</div>
                     </div>
                     <div className="co-item-price">
