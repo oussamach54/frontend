@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Alert } from "react-bootstrap";
 import api from "../api";
 import { useCart } from "../cart/CartProvider";
-import { SHOP } from "../config/shop";
 import { createOrder } from "../apiOrders";
 import "./checkout.css";
 
@@ -36,11 +35,6 @@ async function tryUrls(calls) {
     }
   }
   throw lastErr || new Error("All endpoint candidates failed");
-}
-
-function normalizePhone(p) {
-  // wa.me veut uniquement des chiffres
-  return String(p || "").replace(/[^\d]/g, "");
 }
 
 export default function CheckoutPage() {
@@ -86,19 +80,15 @@ export default function CheckoutPage() {
           ...(isProdApp
             ? [
                 async () => {
-                  const res = await fetch(
-                    `${ABS_API}/api/payments/shipping-rates/`,
-                    { credentials: "omit" }
-                  );
+                  const res = await fetch(`${ABS_API}/api/payments/shipping-rates/`, {
+                    credentials: "omit",
+                  });
                   if (!res.ok)
                     throw Object.assign(new Error(`HTTP ${res.status}`), {
                       response: { status: res.status },
                     });
                   const json = await res.json();
-                  return {
-                    data: json,
-                    hit: `abs:${ABS_API}/api/payments/shipping-rates/`,
-                  };
+                  return { data: json, hit: `abs:${ABS_API}/api/payments/shipping-rates/` };
                 },
               ]
             : []),
@@ -125,10 +115,7 @@ export default function CheckoutPage() {
 
         console.warn("[Checkout] API returned empty list; using fallback.");
       } catch (e) {
-        console.warn(
-          "[Checkout] Failed to load API shipping rates; using fallback.",
-          e?.message || e
-        );
+        console.warn("[Checkout] Failed to load API shipping rates; using fallback.", e?.message || e);
       }
     })();
 
@@ -140,8 +127,7 @@ export default function CheckoutPage() {
   // Ville par défaut = Casablanca
   useEffect(() => {
     if (!rates.length) return;
-    const def =
-      rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
+    const def = rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
     setCity(def.city);
     setShippingPrice(Number(def.price || 0));
   }, [rates]);
@@ -151,63 +137,17 @@ export default function CheckoutPage() {
     [totals.subtotal, shippingPrice]
   );
 
-  const buildWhatsAppUrl = (orderId) => {
-    const lines = [];
-    lines.push(`*${SHOP.BRAND}* – Nouvelle commande #${orderId ?? "?"}`);
-    lines.push("");
-    lines.push("*Articles :*");
-
-    items.forEach((it) => {
-      const q = Number(it.qty || 1);
-      const p = Number(it.price).toFixed(2);
-      lines.push(
-        `• ${it.name}${it.variantLabel ? " (" + it.variantLabel + ")" : ""} — ${p} MAD × ${q}`
-      );
-    });
-
-    lines.push("");
-    const ss = Number(totals.subtotal || 0).toFixed(2);
-    const sp = Number(shippingPrice || 0).toFixed(2);
-    const tt = Number(total).toFixed(2);
-
-    lines.push(`Sous-total : ${ss} MAD`);
-    lines.push(`Livraison : ${sp} MAD`);
-    lines.push(`*Total : ${tt} MAD*`);
-    lines.push("");
-    lines.push("*Coordonnées :*");
-    if (email) lines.push(`Email : ${email}`);
-    lines.push(`Nom : ${(first || "").trim()} ${(last || "").trim()}`.trim());
-    lines.push(`Téléphone : ${phone || "-"}`);
-    lines.push(
-      `Adresse : ${addr}${apt ? ", " + apt : ""}${zip ? ", " + zip : ""}${
-        city ? " – " + city : ""
-      }`.trim()
-    );
-    lines.push("");
-    lines.push("Merci de confirmer ma commande 🙏");
-
-    const msg = encodeURIComponent(lines.join("\n"));
-    const to = normalizePhone(SHOP.WHATSAPP);
-
-    // ✅ wa.me fonctionne mieux (mobile + desktop)
-    return `https://wa.me/${to}?text=${msg}`;
-  };
-
   const submit = async () => {
     setErr("");
 
-    if (!items.length) return setErr("Votre panier est vide.");
-    if (!addr || !city || !phone)
-      return setErr("Adresse, ville et téléphone sont obligatoires.");
+    if (!items.length) return setErr("Your cart is empty.");
+    if (!addr || !city || !phone) return setErr("Address, city and phone are required.");
 
     try {
       setLoading(true);
 
       const full_name =
-        `${(first || "").trim()} ${(last || "").trim()}`.trim() ||
-        last ||
-        first ||
-        "Client";
+        `${(first || "").trim()} ${(last || "").trim()}`.trim() || last || first || "Client";
 
       const payload = {
         full_name,
@@ -225,29 +165,21 @@ export default function CheckoutPage() {
         })),
       };
 
-      // 1) créer la commande backend
+      // ✅ PRIORITY: Save order first (backend + sheet)
       const order = await createOrder(payload);
 
-      // 2) construire URL WhatsApp
-      const wa = buildWhatsAppUrl(order?.id);
-
-      // 3) sauvegarder pour la page merci (important: avant clear)
+      // ✅ store only orderId for Thank You page (cart can be cleared)
       try {
-        sessionStorage.setItem("wa_url", wa);
-        sessionStorage.setItem("order_id", String(order?.id || ""));
+        sessionStorage.setItem("last_order_id", String(order?.id || ""));
       } catch {}
 
-      // 4) vider panier
+      // ✅ clear cart AFTER order saved
       clear();
 
-      // 5) redirection vers page Merci (le bouton WhatsApp sera un vrai "user click")
+      // ✅ go to Thank You page (WhatsApp will be opened by user click)
       window.location.href = "/thank-you";
     } catch (e) {
-      setErr(
-        e?.response?.data?.detail ||
-          e?.message ||
-          "Impossible d’enregistrer la commande."
-      );
+      setErr(e?.response?.data?.detail || e?.message || "Could not create the order.");
     } finally {
       setLoading(false);
     }
@@ -258,59 +190,56 @@ export default function CheckoutPage() {
       <div className="co-left">
         <h2 className="co-title">Contact</h2>
         <div className="co-field">
-          <label>E-mail ou numéro de portable</label>
+          <label>Email or phone</label>
           <input value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
 
-        <h2 className="co-title">Livraison</h2>
+        <h2 className="co-title">Shipping</h2>
         <div className="co-grid-2">
           <div className="co-field">
-            <label>Prénom (optionnel)</label>
+            <label>First name (optional)</label>
             <input value={first} onChange={(e) => setFirst(e.target.value)} />
           </div>
           <div className="co-field">
-            <label>Nom</label>
+            <label>Last name</label>
             <input value={last} onChange={(e) => setLast(e.target.value)} />
           </div>
         </div>
 
         <div className="co-field">
-          <label>Adresse</label>
+          <label>Address</label>
           <input value={addr} onChange={(e) => setAddr(e.target.value)} />
         </div>
 
         <div className="co-grid-2">
           <div className="co-field">
-            <label>Appartement, suite, etc. (optionnel)</label>
+            <label>Apartment, suite, etc. (optional)</label>
             <input value={apt} onChange={(e) => setApt(e.target.value)} />
           </div>
           <div className="co-field">
-            <label>Ville</label>
+            <label>City</label>
             <input value={city} readOnly />
           </div>
         </div>
 
         <div className="co-grid-2">
           <div className="co-field">
-            <label>Code postal (facultatif)</label>
+            <label>Postal code (optional)</label>
             <input value={zip} onChange={(e) => setZip(e.target.value)} />
           </div>
           <div className="co-field">
-            <label>Téléphone</label>
+            <label>Phone</label>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
         </div>
 
         <div className="co-block">
-          <div className="co-block-title">Mode d’expédition</div>
+          <div className="co-block-title">Shipping method</div>
           <div className="co-ship-list">
             {rates.map((r) => {
               const checked = r.city === city;
               return (
-                <label
-                  key={r.city}
-                  className={`co-ship-row ${checked ? "is-active" : ""}`}
-                >
+                <label key={r.city} className={`co-ship-row ${checked ? "is-active" : ""}`}>
                   <input
                     type="radio"
                     name="ship"
@@ -321,9 +250,7 @@ export default function CheckoutPage() {
                     }}
                   />
                   <span className="co-ship-city">{r.city}</span>
-                  <span className="co-ship-price">
-                    {Number(r.price).toFixed(2)} MAD
-                  </span>
+                  <span className="co-ship-price">{Number(r.price).toFixed(2)} MAD</span>
                 </label>
               );
             })}
@@ -337,14 +264,14 @@ export default function CheckoutPage() {
         )}
 
         <button className="co-submit" onClick={submit} disabled={loading}>
-          {loading ? "Enregistrement…" : "Valider la commande"}
+          {loading ? "Saving order…" : "Place order"}
         </button>
       </div>
 
       <aside className="co-right">
         <div className="co-summary">
           {items.length === 0 ? (
-            <div className="co-empty">Votre panier est vide.</div>
+            <div className="co-empty">Your cart is empty.</div>
           ) : (
             <>
               <ul className="co-items">
@@ -353,9 +280,7 @@ export default function CheckoutPage() {
                     <img src={i.image} alt={i.name} />
                     <div className="co-item-info">
                       <div className="co-item-name">{i.name}</div>
-                      {i.variantLabel && (
-                        <div className="co-item-variant">{i.variantLabel}</div>
-                      )}
+                      {i.variantLabel && <div className="co-item-variant">{i.variantLabel}</div>}
                       <div className="co-item-qty">× {i.qty || 1}</div>
                     </div>
                     <div className="co-item-price">
@@ -366,11 +291,11 @@ export default function CheckoutPage() {
               </ul>
 
               <div className="co-line">
-                <span>Sous-total</span>
+                <span>Subtotal</span>
                 <b>{Number(totals.subtotal || 0).toFixed(2)} MAD</b>
               </div>
               <div className="co-line">
-                <span>Expédition</span>
+                <span>Shipping</span>
                 <b>{Number(shippingPrice || 0).toFixed(2)} MAD</b>
               </div>
               <div className="co-total">
