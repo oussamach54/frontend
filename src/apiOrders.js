@@ -8,26 +8,22 @@ function stripTrailingSlash(s) {
 function getBaseCandidates() {
   const axiosBase = stripTrailingSlash(api?.defaults?.baseURL); // e.g. https://api.domain.com/api
   const envBase = stripTrailingSlash(process.env.REACT_APP_API_URL); // should be https://api.domain.com (NO /api)
-  const hardBase = "https://api.miniglowbyshay.cloud"; // safe fallback
-
-  const list = [axiosBase, envBase, hardBase].filter(Boolean);
-
-  // Dedupe
-  return Array.from(new Set(list));
+  const hardBase = "https://api.miniglowbyshay.cloud";
+  return Array.from(new Set([axiosBase, envBase, hardBase].filter(Boolean)));
 }
 
 function buildOrderUrlsFromBase(base) {
   const b = stripTrailingSlash(base);
+  if (b.endsWith("/api")) return [`${b}/orders/`];
+  return [`${b}/api/orders/`, `${b}/orders/`];
+}
 
-  // If base already ends with /api, then correct endpoint is `${b}/orders/`
-  if (b.endsWith("/api")) {
-    return [`${b}/orders/`]; // ✅
-  }
-
-  // Otherwise try both patterns
+function buildPublicOrderUrlsFromBase(base, id, token) {
+  const b = stripTrailingSlash(base);
+  if (b.endsWith("/api")) return [`${b}/orders/public/${id}/${token}/`];
   return [
-    `${b}/api/orders/`, // ✅ common
-    `${b}/orders/`,     // ✅ sometimes used
+    `${b}/api/orders/public/${id}/${token}/`,
+    `${b}/orders/public/${id}/${token}/`,
   ];
 }
 
@@ -44,23 +40,19 @@ async function postJson(url, payload) {
     const txt = await res.text().catch(() => "");
     throw new Error(`createOrder failed (${res.status}): ${txt}`);
   }
-
   return await res.json();
 }
 
 export async function createOrder(payload) {
-  // 1) Normal axios call first
   try {
-    const { data } = await api.post("/orders/", payload); // baseURL already has /api
+    const { data } = await api.post("/orders/", payload);
     return data;
   } catch (err) {
-    // 2) Fallback absolute fetch (for in-app browsers)
     const bases = getBaseCandidates();
     let lastErr = err;
 
     for (const base of bases) {
       const urls = buildOrderUrlsFromBase(base);
-
       for (const url of urls) {
         try {
           return await postJson(url, payload);
@@ -69,7 +61,36 @@ export async function createOrder(payload) {
         }
       }
     }
+    throw lastErr;
+  }
+}
 
+export async function getPublicOrder(id, token) {
+  if (!id || !token) throw new Error("Missing order id or token");
+
+  // axios first
+  try {
+    const { data } = await api.get(`/orders/public/${id}/${token}/`);
+    return data;
+  } catch (err) {
+    const bases = getBaseCandidates();
+    let lastErr = err;
+
+    for (const base of bases) {
+      const urls = buildPublicOrderUrlsFromBase(base, id, token);
+      for (const url of urls) {
+        try {
+          const res = await fetch(url, { method: "GET", credentials: "omit" });
+          if (!res.ok) {
+            const txt = await res.text().catch(() => "");
+            throw new Error(`getPublicOrder failed (${res.status}): ${txt}`);
+          }
+          return await res.json();
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+    }
     throw lastErr;
   }
 }

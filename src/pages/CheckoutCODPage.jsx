@@ -4,43 +4,6 @@ import { Form, Button, Alert, Card } from "react-bootstrap";
 import { useHistory } from "react-router-dom";
 import { getCart, cartTotal, clearCart } from "../utils/cart";
 import { createOrder } from "../apiOrders";
-import { SHOP } from "../config/shop";
-
-function normalizePhone(p) {
-  return String(p || "").replace(/[^\d]/g, "");
-}
-
-function buildWhatsAppUrlFromOrder(order) {
-  const to = normalizePhone(SHOP.WHATSAPP);
-
-  const lines = [];
-  lines.push(`*${SHOP.BRAND}* – Order #${order?.id ?? "?"}`);
-  lines.push("");
-  lines.push("*Items:*");
-
-  (order?.items || []).forEach((it) => {
-    const q = Number(it.quantity || 1);
-    const p = Number(it.unit_price || 0).toFixed(2);
-    const label = it.variant_label ? ` (${it.variant_label})` : "";
-    lines.push(`• ${it.name}${label} — ${p} MAD × ${q}`);
-  });
-
-  lines.push("");
-  lines.push(`Subtotal: ${Number(order?.items_total || 0).toFixed(2)} MAD`);
-  lines.push(`Shipping: ${Number(order?.shipping_price || 0).toFixed(2)} MAD`);
-  lines.push(`*Total: ${Number(order?.grand_total || 0).toFixed(2)} MAD*`);
-  lines.push("");
-  lines.push("*Customer:*");
-  lines.push(`Name: ${order?.full_name || "-"}`);
-  lines.push(`Phone: ${order?.phone || "-"}`);
-  lines.push(`City: ${order?.city || "-"}`);
-  lines.push(`Address: ${order?.address || "-"}`);
-  lines.push("");
-  lines.push("Please confirm my order 🙏");
-
-  const msg = encodeURIComponent(lines.join("\n"));
-  return `https://wa.me/${to}?text=${msg}`;
-}
 
 export default function CheckoutCODPage() {
   const history = useHistory();
@@ -61,31 +24,25 @@ export default function CheckoutCODPage() {
     e.preventDefault();
     setErr("");
 
-    if (!items.length) {
-      setErr("Your cart is empty.");
-      return;
-    }
-    if (!phone.trim() || !address.trim()) {
-      setErr("Phone and address are required.");
-      return;
-    }
+    if (!items.length) return setErr("Your cart is empty.");
+    if (!phone.trim() || !address.trim()) return setErr("Phone and address are required.");
 
     try {
       setLoading(true);
 
-      // ✅ Convert local cart format to backend /orders/ format
-      // IMPORTANT: your backend OrderCreateSerializer expects:
-      // items: [{ product_id, variant_id, quantity }]
-      // If your local cart doesn't store variantId, send null.
       const orderPayload = {
         full_name: customerName?.trim() || "Client",
-        email: "", // keep empty if you don’t ask here
+        email: "",
         phone: phone.trim(),
         city: (city || "").trim(),
         address: address.trim(),
         notes: notes || "",
         payment_method: "cod",
-        shipping_price: 0, // COD quick page: no shipping calculation here (you can improve later)
+
+        // optional: if you don’t calculate shipping here, keep 0
+        // better: compute shipping by city later
+        shipping_price: 0,
+
         items: items.map((it) => ({
           product_id: it.id,
           variant_id: it.variantId || null,
@@ -93,29 +50,26 @@ export default function CheckoutCODPage() {
         })),
       };
 
-      // ✅ PRIORITY: save order in your real Order table (+ sheet)
+      // ✅ SAVE ORDER FIRST
       const order = await createOrder(orderPayload);
 
-      // ✅ Build WhatsApp url from saved order (backend truth)
-      const wa = buildWhatsAppUrlFromOrder(order);
+      const oid = String(order?.id || "");
+      const token = String(order?.public_token || "");
 
       // ✅ store for thank-you page
       try {
-        sessionStorage.setItem("last_order_id", String(order?.id || ""));
-        sessionStorage.setItem("last_wa_url", wa);
-      } catch {}
-      try {
-        localStorage.setItem("last_order_id", String(order?.id || ""));
-        localStorage.setItem("last_wa_url", wa);
+        sessionStorage.setItem("last_order_id", oid);
+        sessionStorage.setItem("last_order_token", token);
       } catch {}
 
       setOk(true);
 
-      // ✅ clear cart only after order saved
+      // ✅ clear cart AFTER saved
       clearCart();
 
-      // ✅ go to thank-you (user clicks WhatsApp there)
-      window.location.href = `/thank-you?order=${order?.id || ""}`;
+      // ✅ redirect WITH TOKEN
+      const qs = `?order=${encodeURIComponent(oid)}&token=${encodeURIComponent(token)}`;
+      window.location.href = `/thank-you${qs}`;
     } catch (e2) {
       const msg =
         e2?.response?.data?.detail ||
@@ -135,7 +89,6 @@ export default function CheckoutCODPage() {
       {ok && <Alert variant="success">Order saved. Redirecting to confirmation page…</Alert>}
 
       <div className="row">
-        {/* Cart Summary */}
         <div className="col-lg-5 mb-4">
           <Card>
             <Card.Header>
@@ -146,10 +99,7 @@ export default function CheckoutCODPage() {
               {!!items.length && (
                 <ul className="list-unstyled">
                   {items.map((it, idx) => (
-                    <li
-                      key={idx}
-                      className="d-flex justify-content-between align-items-center mb-2"
-                    >
+                    <li key={idx} className="d-flex justify-content-between align-items-center mb-2">
                       <div>
                         <div className="small text-muted">#{it.id}</div>
                         <div>{it.name}</div>
@@ -169,7 +119,6 @@ export default function CheckoutCODPage() {
           </Card>
         </div>
 
-        {/* Shipping Form */}
         <div className="col-lg-7">
           <Card>
             <Card.Header>
