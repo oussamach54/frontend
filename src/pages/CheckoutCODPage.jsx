@@ -229,7 +229,7 @@ export default function CheckoutCODPage() {
                 </Form.Group>
 
                 <Button type="submit" variant="dark" disabled={loading || !items.length}>
-                  {loading ? "Saving…" : "Place order"}
+                  {loading ? "Saving…" : "Valider la commande"}
                 </Button>
 
                 <Button

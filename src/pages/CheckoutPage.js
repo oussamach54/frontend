@@ -232,7 +232,7 @@ export default function CheckoutPage() {
         </div>
 
         <div className="co-block">
-          <div className="co-block-title">Shipping method</div>
+          <div className="co-block-title">méthode d'expédition</div>
           <div className="co-ship-list">
             {rates.map((r) => {
               const checked = r.city === city;
@@ -262,14 +262,14 @@ export default function CheckoutPage() {
         )}
 
         <button className="co-submit" onClick={submit} disabled={loading}>
-          {loading ? "Saving order…" : "Place order"}
+          {loading ? "Saving order…" : "Valider la commande"}
         </button>
       </div>
 
       <aside className="co-right">
         <div className="co-summary">
           {items.length === 0 ? (
-            <div className="co-empty">Your cart is empty.</div>
+            <div className="co-empty">Votre panier est vide..</div>
           ) : (
             <>
               <ul className="co-items">
