@@ -1,10 +1,7 @@
 // src/apiOrders.js
 import api from "./api";
 
-// حاول تجيب base api من axios instance (إلا موجود)
-// وإلا fallback لـ env أو api.miniglowbyshay.cloud
 function getApiBase() {
-  // axios instance غالباً فيه baseURL
   const base =
     api?.defaults?.baseURL ||
     process.env.REACT_APP_API_URL ||
@@ -15,15 +12,12 @@ function getApiBase() {
 export async function createOrder(payload) {
   // 1) Primary: axios (normal)
   try {
-    const { data } = await api.post("/orders/", payload); // => /api/orders/
+    const { data } = await api.post("/orders/", payload);
     return data;
   } catch (err) {
     // 2) Fallback: fetch keepalive (important for some mobile/in-app browsers)
     const base = getApiBase();
 
-    // IMPORTANT:
-    // If your API is behind /api prefix already in baseURL, keep path /orders/
-    // Otherwise use /api/orders/
     const urlCandidates = [
       `${base}/orders/`,
       `${base}/api/orders/`,
@@ -37,7 +31,7 @@ export async function createOrder(payload) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
-          keepalive: true, // ✅ key fix
+          keepalive: true,
           credentials: "omit",
         });
 

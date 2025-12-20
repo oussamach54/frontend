@@ -4,9 +4,10 @@ import { Alert } from "react-bootstrap";
 import api from "../api";
 import { useCart } from "../cart/CartProvider";
 import { createOrder } from "../apiOrders";
+import { SHOP } from "../config/shop";
 import "./checkout.css";
 
-/** Fallback si l’API des tarifs n’est pas joignable */
+/** Fallback if API shipping rates fail */
 const FALLBACK_RATES = [
   { city: "Casablanca", price: 20 },
   { city: "Ain Harouda", price: 30 },
@@ -37,10 +38,50 @@ async function tryUrls(calls) {
   throw lastErr || new Error("All endpoint candidates failed");
 }
 
+function normalizePhone(p) {
+  return String(p || "").replace(/[^\d]/g, "");
+}
+
+/**
+ * Build WhatsApp URL using the order returned from backend
+ * (best source of truth: totals/prices are backend-calculated)
+ */
+function buildWhatsAppUrlFromOrder(order) {
+  const to = normalizePhone(SHOP.WHATSAPP);
+
+  const lines = [];
+  lines.push(`*${SHOP.BRAND}* – Order #${order?.id ?? "?"}`);
+  lines.push("");
+  lines.push("*Items:*");
+
+  (order?.items || []).forEach((it) => {
+    const q = Number(it.quantity || 1);
+    const p = Number(it.unit_price || 0).toFixed(2);
+    const label = it.variant_label ? ` (${it.variant_label})` : "";
+    lines.push(`• ${it.name}${label} — ${p} MAD × ${q}`);
+  });
+
+  lines.push("");
+  lines.push(`Subtotal: ${Number(order?.items_total || 0).toFixed(2)} MAD`);
+  lines.push(`Shipping: ${Number(order?.shipping_price || 0).toFixed(2)} MAD`);
+  lines.push(`*Total: ${Number(order?.grand_total || 0).toFixed(2)} MAD*`);
+  lines.push("");
+  lines.push("*Customer:*");
+  lines.push(`Name: ${order?.full_name || "-"}`);
+  lines.push(`Phone: ${order?.phone || "-"}`);
+  lines.push(`City: ${order?.city || "-"}`);
+  lines.push(`Address: ${order?.address || "-"}`);
+  lines.push("");
+  lines.push("Please confirm my order 🙏");
+
+  const msg = encodeURIComponent(lines.join("\n"));
+  return `https://wa.me/${to}?text=${msg}`;
+}
+
 export default function CheckoutPage() {
   const { items, totals, clear } = useCart();
 
-  // contact + adresse
+  // contact + address
   const [email, setEmail] = useState("");
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
@@ -50,14 +91,14 @@ export default function CheckoutPage() {
   const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
 
-  // expédition
+  // shipping
   const [rates, setRates] = useState(FALLBACK_RATES);
   const [shippingPrice, setShippingPrice] = useState(0);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // Chargement des tarifs de livraison
+  // Load shipping rates
   useEffect(() => {
     let alive = true;
     const isProdApp =
@@ -124,7 +165,7 @@ export default function CheckoutPage() {
     };
   }, []);
 
-  // Ville par défaut = Casablanca
+  // Default city = Casablanca
   useEffect(() => {
     if (!rates.length) return;
     const def = rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
@@ -168,16 +209,25 @@ export default function CheckoutPage() {
       // ✅ PRIORITY: Save order first (backend + sheet)
       const order = await createOrder(payload);
 
-      // ✅ store only orderId for Thank You page (cart can be cleared)
+      // ✅ Create WA URL from the backend order response
+      const wa = buildWhatsAppUrlFromOrder(order);
+
+      // ✅ Save to sessionStorage + localStorage (for in-app browser reliability)
       try {
         sessionStorage.setItem("last_order_id", String(order?.id || ""));
+        sessionStorage.setItem("last_wa_url", wa);
+      } catch {}
+
+      try {
+        localStorage.setItem("last_order_id", String(order?.id || ""));
+        localStorage.setItem("last_wa_url", wa);
       } catch {}
 
       // ✅ clear cart AFTER order saved
       clear();
 
-      // ✅ go to Thank You page (WhatsApp will be opened by user click)
-      window.location.href = "/thank-you";
+      // ✅ redirect with query param fallback
+      window.location.href = `/thank-you?order=${order?.id || ""}`;
     } catch (e) {
       setErr(e?.response?.data?.detail || e?.message || "Could not create the order.");
     } finally {
