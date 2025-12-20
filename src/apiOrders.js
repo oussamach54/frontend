@@ -10,18 +10,12 @@ function getApiBase() {
 }
 
 export async function createOrder(payload) {
-  // 1) Primary: axios (normal)
   try {
     const { data } = await api.post("/orders/", payload);
     return data;
   } catch (err) {
-    // 2) Fallback: fetch keepalive (important for some mobile/in-app browsers)
     const base = getApiBase();
-
-    const urlCandidates = [
-      `${base}/orders/`,
-      `${base}/api/orders/`,
-    ];
+    const urlCandidates = [`${base}/orders/`, `${base}/api/orders/`];
 
     let lastError = err;
 
@@ -57,6 +51,12 @@ export async function getMyOrders() {
 
 export async function getOrder(id) {
   const { data } = await api.get(`/orders/${id}/`);
+  return data;
+}
+
+// ✅ NEW: guest-friendly fetch
+export async function getPublicOrder(id, token) {
+  const { data } = await api.get(`/orders/public/${id}/${token}/`);
   return data;
 }
 

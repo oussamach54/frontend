@@ -4,10 +4,8 @@ import { Alert } from "react-bootstrap";
 import api from "../api";
 import { useCart } from "../cart/CartProvider";
 import { createOrder } from "../apiOrders";
-import { SHOP } from "../config/shop";
 import "./checkout.css";
 
-/** Fallback if API shipping rates fail */
 const FALLBACK_RATES = [
   { city: "Casablanca", price: 20 },
   { city: "Ain Harouda", price: 30 },
@@ -38,50 +36,9 @@ async function tryUrls(calls) {
   throw lastErr || new Error("All endpoint candidates failed");
 }
 
-function normalizePhone(p) {
-  return String(p || "").replace(/[^\d]/g, "");
-}
-
-/**
- * Build WhatsApp URL using the order returned from backend
- * (best source of truth: totals/prices are backend-calculated)
- */
-function buildWhatsAppUrlFromOrder(order) {
-  const to = normalizePhone(SHOP.WHATSAPP);
-
-  const lines = [];
-  lines.push(`*${SHOP.BRAND}* – Order #${order?.id ?? "?"}`);
-  lines.push("");
-  lines.push("*Items:*");
-
-  (order?.items || []).forEach((it) => {
-    const q = Number(it.quantity || 1);
-    const p = Number(it.unit_price || 0).toFixed(2);
-    const label = it.variant_label ? ` (${it.variant_label})` : "";
-    lines.push(`• ${it.name}${label} — ${p} MAD × ${q}`);
-  });
-
-  lines.push("");
-  lines.push(`Subtotal: ${Number(order?.items_total || 0).toFixed(2)} MAD`);
-  lines.push(`Shipping: ${Number(order?.shipping_price || 0).toFixed(2)} MAD`);
-  lines.push(`*Total: ${Number(order?.grand_total || 0).toFixed(2)} MAD*`);
-  lines.push("");
-  lines.push("*Customer:*");
-  lines.push(`Name: ${order?.full_name || "-"}`);
-  lines.push(`Phone: ${order?.phone || "-"}`);
-  lines.push(`City: ${order?.city || "-"}`);
-  lines.push(`Address: ${order?.address || "-"}`);
-  lines.push("");
-  lines.push("Please confirm my order 🙏");
-
-  const msg = encodeURIComponent(lines.join("\n"));
-  return `https://wa.me/${to}?text=${msg}`;
-}
-
 export default function CheckoutPage() {
   const { items, totals, clear } = useCart();
 
-  // contact + address
   const [email, setEmail] = useState("");
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
@@ -91,14 +48,12 @@ export default function CheckoutPage() {
   const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
 
-  // shipping
   const [rates, setRates] = useState(FALLBACK_RATES);
   const [shippingPrice, setShippingPrice] = useState(0);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // Load shipping rates
   useEffect(() => {
     let alive = true;
     const isProdApp =
@@ -153,8 +108,6 @@ export default function CheckoutPage() {
             return;
           }
         }
-
-        console.warn("[Checkout] API returned empty list; using fallback.");
       } catch (e) {
         console.warn("[Checkout] Failed to load API shipping rates; using fallback.", e?.message || e);
       }
@@ -165,7 +118,6 @@ export default function CheckoutPage() {
     };
   }, []);
 
-  // Default city = Casablanca
   useEffect(() => {
     if (!rates.length) return;
     const def = rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
@@ -206,28 +158,24 @@ export default function CheckoutPage() {
         })),
       };
 
-      // ✅ PRIORITY: Save order first (backend + sheet)
+      // ✅ Save order first
       const order = await createOrder(payload);
 
-      // ✅ Create WA URL from the backend order response
-      const wa = buildWhatsAppUrlFromOrder(order);
-
-      // ✅ Save to sessionStorage + localStorage (for in-app browser reliability)
-      try {
-        sessionStorage.setItem("last_order_id", String(order?.id || ""));
-        sessionStorage.setItem("last_wa_url", wa);
-      } catch {}
+      // ✅ store for guests
+      const oid = String(order?.id || "");
+      const token = String(order?.public_token || "");
 
       try {
-        localStorage.setItem("last_order_id", String(order?.id || ""));
-        localStorage.setItem("last_wa_url", wa);
+        sessionStorage.setItem("last_order_id", oid);
+        sessionStorage.setItem("last_order_token", token);
       } catch {}
 
-      // ✅ clear cart AFTER order saved
+      // ✅ clear cart after saving
       clear();
 
-      // ✅ redirect with query param fallback
-      window.location.href = `/thank-you?order=${order?.id || ""}`;
+      // ✅ redirect with query params (works even if sessionStorage is blocked)
+      const qs = `?order=${encodeURIComponent(oid)}&token=${encodeURIComponent(token)}`;
+      window.location.href = `/thank-you${qs}`;
     } catch (e) {
       setErr(e?.response?.data?.detail || e?.message || "Could not create the order.");
     } finally {
