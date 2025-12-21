@@ -1,19 +1,38 @@
 // src/api.js
 import axios from "axios";
 
+/**
+ * Normalize an API origin:
+ * - trim spaces
+ * - remove trailing slash
+ * - if user mistakenly sets .../api, strip it to keep ONLY the origin
+ *   so we can safely append "/api" once.
+ */
+function normalizeOrigin(v) {
+  let s = String(v || "").trim();
+  if (!s) return "";
+  s = s.replace(/\/+$/, "");
+  if (s.endsWith("/api")) s = s.slice(0, -4);
+  return s;
+}
+
 /** Pick the correct API origin (local vs prod) */
-function chooseBaseURL() {
-  const env = (process.env.REACT_APP_API_URL || "").trim();
-  if (env) return env; // e.g. https://api.miniglowbyshay.cloud
+function chooseApiOrigin() {
+  const env = normalizeOrigin(process.env.REACT_APP_API_URL);
+  if (env) return env; // ✅ should be like https://api.miniglowbyshay.cloud (NO /api)
 
   if (typeof window !== "undefined") {
-    const host = window.location.hostname;
+    const host = window.location.hostname || "";
+    // If frontend is on *.miniglowbyshay.cloud (not api subdomain) -> use api subdomain
     if (host.endsWith("miniglowbyshay.cloud") && !host.startsWith("api.")) {
       return "https://api.miniglowbyshay.cloud";
     }
   }
   return "http://localhost:8000";
 }
+
+/** Exported so apiOrders.js can build one guaranteed-correct absolute URL */
+export const API_ORIGIN = chooseApiOrigin();
 
 /** Env-scoped storage keys so local/prod don’t clash */
 export function storageKeys() {
@@ -54,12 +73,12 @@ export function readToken() {
 export function clearTokens() {
   const { access, refresh, user } = storageKeys();
 
-  // nouveaux clés
+  // new keys
   localStorage.removeItem(access);
   localStorage.removeItem(refresh);
   localStorage.removeItem(user);
 
-  // anciens / legacy
+  // legacy keys
   localStorage.removeItem("access");
   localStorage.removeItem("token");
   localStorage.removeItem("refresh");
@@ -67,8 +86,8 @@ export function clearTokens() {
 }
 
 const api = axios.create({
-  // on appelle toujours "/products/", "/orders/...", etc.
-  baseURL: `${chooseBaseURL()}/api`,
+  // ✅ Always exactly one "/api"
+  baseURL: `${API_ORIGIN}/api`,
   timeout: 20000,
 });
 
@@ -79,31 +98,25 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-/** Gestion centralisée des erreurs */
+/** Central error handling */
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     const status = err?.response?.status;
     const detail = err?.response?.data?.detail;
 
-    // 🔴 Cas token invalide / expiré (message typique DRF SimpleJWT)
-    if (
-      status === 401 &&
-      typeof detail === "string"
-    ) {
+    // token invalid / expired -> logout silently
+    if (status === 401 && typeof detail === "string") {
       const low = detail.toLowerCase();
-
       if (
         low.includes("given token not valid for any token type") ||
         low.includes("token is invalid or expired") ||
         low.includes("not authenticated")
       ) {
-        // On nettoie tout : l'utilisateur sera simplement déconnecté
         clearTokens();
       }
     }
 
-    // log console pour debug
     // eslint-disable-next-line no-console
     console.error("API error:", err?.response || err.message);
     return Promise.reject(err);

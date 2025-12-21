@@ -1,38 +1,20 @@
 // src/apiOrders.js
-import api from "./api";
+import api, { API_ORIGIN } from "./api";
 
-function stripTrailingSlash(s) {
-  return String(s || "").replace(/\/$/, "");
-}
-
-function getBaseCandidates() {
-  const axiosBase = stripTrailingSlash(api?.defaults?.baseURL); // e.g. https://api.domain.com/api
-  const envBase = stripTrailingSlash(process.env.REACT_APP_API_URL); // should be https://api.domain.com (NO /api)
-  const hardBase = "https://api.miniglowbyshay.cloud";
-  return Array.from(new Set([axiosBase, envBase, hardBase].filter(Boolean)));
-}
-
-function buildOrderUrlsFromBase(base) {
-  const b = stripTrailingSlash(base);
-  if (b.endsWith("/api")) return [`${b}/orders/`];
-  return [`${b}/api/orders/`, `${b}/orders/`];
-}
-
-function buildPublicOrderUrlsFromBase(base, id, token) {
-  const b = stripTrailingSlash(base);
-  if (b.endsWith("/api")) return [`${b}/orders/public/${id}/${token}/`];
-  return [
-    `${b}/api/orders/public/${id}/${token}/`,
-    `${b}/orders/public/${id}/${token}/`,
-  ];
-}
+/**
+ * One safe absolute base.
+ * This avoids random 404s caused by wrong "/api/api" or wrong host.
+ */
+const ABS_ORDERS_URL = `${API_ORIGIN}/api/orders/`;
+const absPublicOrderUrl = (id, token) =>
+  `${API_ORIGIN}/api/orders/public/${id}/${token}/`;
 
 async function postJson(url, payload) {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-    keepalive: true,
+    keepalive: true, // ✅ helps some mobile/in-app browsers
     credentials: "omit",
   });
 
@@ -40,28 +22,27 @@ async function postJson(url, payload) {
     const txt = await res.text().catch(() => "");
     throw new Error(`createOrder failed (${res.status}): ${txt}`);
   }
+
+  return await res.json();
+}
+
+async function getJson(url) {
+  const res = await fetch(url, { method: "GET", credentials: "omit" });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`GET failed (${res.status}): ${txt}`);
+  }
   return await res.json();
 }
 
 export async function createOrder(payload) {
+  // 1) Normal axios call first (fast + consistent)
   try {
     const { data } = await api.post("/orders/", payload);
     return data;
   } catch (err) {
-    const bases = getBaseCandidates();
-    let lastErr = err;
-
-    for (const base of bases) {
-      const urls = buildOrderUrlsFromBase(base);
-      for (const url of urls) {
-        try {
-          return await postJson(url, payload);
-        } catch (e) {
-          lastErr = e;
-        }
-      }
-    }
-    throw lastErr;
+    // 2) Absolute fetch fallback (prevents wrong URL / in-app issues)
+    return await postJson(ABS_ORDERS_URL, payload);
   }
 }
 
@@ -73,25 +54,8 @@ export async function getPublicOrder(id, token) {
     const { data } = await api.get(`/orders/public/${id}/${token}/`);
     return data;
   } catch (err) {
-    const bases = getBaseCandidates();
-    let lastErr = err;
-
-    for (const base of bases) {
-      const urls = buildPublicOrderUrlsFromBase(base, id, token);
-      for (const url of urls) {
-        try {
-          const res = await fetch(url, { method: "GET", credentials: "omit" });
-          if (!res.ok) {
-            const txt = await res.text().catch(() => "");
-            throw new Error(`getPublicOrder failed (${res.status}): ${txt}`);
-          }
-          return await res.json();
-        } catch (e) {
-          lastErr = e;
-        }
-      }
-    }
-    throw lastErr;
+    // absolute fallback
+    return await getJson(absPublicOrderUrl(id, token));
   }
 }
 
