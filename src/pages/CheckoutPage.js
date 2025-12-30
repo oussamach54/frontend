@@ -39,7 +39,7 @@ async function tryUrls(calls) {
 export default function CheckoutPage() {
   const { items, totals, clear } = useCart();
 
-  const [email, setEmail] = useState("");
+  // ✅ Email removed
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [addr, setAddr] = useState("");
@@ -76,15 +76,19 @@ export default function CheckoutPage() {
           ...(isProdApp
             ? [
                 async () => {
-                  const res = await fetch(`${ABS_API}/api/payments/shipping-rates/`, {
-                    credentials: "omit",
-                  });
+                  const res = await fetch(
+                    `${ABS_API}/api/payments/shipping-rates/`,
+                    { credentials: "omit" }
+                  );
                   if (!res.ok)
                     throw Object.assign(new Error(`HTTP ${res.status}`), {
                       response: { status: res.status },
                     });
                   const json = await res.json();
-                  return { data: json, hit: `abs:${ABS_API}/api/payments/shipping-rates/` };
+                  return {
+                    data: json,
+                    hit: `abs:${ABS_API}/api/payments/shipping-rates/`,
+                  };
                 },
               ]
             : []),
@@ -109,7 +113,10 @@ export default function CheckoutPage() {
           }
         }
       } catch (e) {
-        console.warn("[Checkout] Failed to load API shipping rates; using fallback.", e?.message || e);
+        console.warn(
+          "[Checkout] Failed to load API shipping rates; using fallback.",
+          e?.message || e
+        );
       }
     })();
 
@@ -120,7 +127,8 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!rates.length) return;
-    const def = rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
+    const def =
+      rates.find((r) => r.city.toLowerCase() === "casablanca") || rates[0];
     setCity(def.city);
     setShippingPrice(Number(def.price || 0));
   }, [rates]);
@@ -134,17 +142,21 @@ export default function CheckoutPage() {
     setErr("");
 
     if (!items.length) return setErr("Your cart is empty.");
-    if (!addr || !city || !phone) return setErr("Address, city and phone are required.");
+    if (!addr || !city || !phone)
+      return setErr("Address, city and phone are required.");
 
     try {
       setLoading(true);
 
       const full_name =
-        `${(first || "").trim()} ${(last || "").trim()}`.trim() || last || first || "Client";
+        `${(first || "").trim()} ${(last || "").trim()}`.trim() ||
+        last ||
+        first ||
+        "Client";
 
       const payload = {
         full_name,
-        email,
+        email: "", // ✅ always blank (avoids invalid email errors)
         phone,
         city,
         address: `${addr}${apt ? ", " + apt : ""}${zip ? ", " + zip : ""}`.trim(),
@@ -158,10 +170,8 @@ export default function CheckoutPage() {
         })),
       };
 
-      // ✅ Save order first
       const order = await createOrder(payload);
 
-      // ✅ store for guests
       const oid = String(order?.id || "");
       const token = String(order?.public_token || "");
 
@@ -170,14 +180,16 @@ export default function CheckoutPage() {
         sessionStorage.setItem("last_order_token", token);
       } catch {}
 
-      // ✅ clear cart after saving
       clear();
 
-      // ✅ redirect with query params (works even if sessionStorage is blocked)
-      const qs = `?order=${encodeURIComponent(oid)}&token=${encodeURIComponent(token)}`;
+      const qs = `?order=${encodeURIComponent(oid)}&token=${encodeURIComponent(
+        token
+      )}`;
       window.location.href = `/thank-you${qs}`;
     } catch (e) {
-      setErr(e?.response?.data?.detail || e?.message || "Could not create the order.");
+      setErr(
+        e?.response?.data?.detail || e?.message || "Could not create the order."
+      );
     } finally {
       setLoading(false);
     }
@@ -186,11 +198,7 @@ export default function CheckoutPage() {
   return (
     <div className="co-wrap">
       <div className="co-left">
-        <h2 className="co-title">Contact</h2>
-        <div className="co-field">
-          <label>Email or phone</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} />
-        </div>
+        {/* ✅ Contact section removed */}
 
         <h2 className="co-title">Shipping</h2>
         <div className="co-grid-2">
@@ -237,7 +245,10 @@ export default function CheckoutPage() {
             {rates.map((r) => {
               const checked = r.city === city;
               return (
-                <label key={r.city} className={`co-ship-row ${checked ? "is-active" : ""}`}>
+                <label
+                  key={r.city}
+                  className={`co-ship-row ${checked ? "is-active" : ""}`}
+                >
                   <input
                     type="radio"
                     name="ship"
@@ -248,7 +259,9 @@ export default function CheckoutPage() {
                     }}
                   />
                   <span className="co-ship-city">{r.city}</span>
-                  <span className="co-ship-price">{Number(r.price).toFixed(2)} MAD</span>
+                  <span className="co-ship-price">
+                    {Number(r.price).toFixed(2)} MAD
+                  </span>
                 </label>
               );
             })}
@@ -278,7 +291,9 @@ export default function CheckoutPage() {
                     <img src={i.image} alt={i.name} />
                     <div className="co-item-info">
                       <div className="co-item-name">{i.name}</div>
-                      {i.variantLabel && <div className="co-item-variant">{i.variantLabel}</div>}
+                      {i.variantLabel && (
+                        <div className="co-item-variant">{i.variantLabel}</div>
+                      )}
                       <div className="co-item-qty">× {i.qty || 1}</div>
                     </div>
                     <div className="co-item-price">
@@ -307,3 +322,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
