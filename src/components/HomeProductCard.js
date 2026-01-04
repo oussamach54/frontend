@@ -32,8 +32,10 @@ function pickBaseVariant(variants) {
   const vs = Array.isArray(variants) ? variants.filter(Boolean) : [];
   if (!vs.length) return null;
 
-  // Prefer the smallest size_ml if available
-  const withSize = vs.filter((v) => v.size_ml !== null && v.size_ml !== undefined && toNum(v.size_ml) > 0);
+  // Prefer smallest size_ml if available
+  const withSize = vs.filter(
+    (v) => v.size_ml !== null && v.size_ml !== undefined && toNum(v.size_ml) > 0
+  );
   if (withSize.length) {
     withSize.sort((a, b) => toNum(a.size_ml) - toNum(b.size_ml));
     return withSize[0];
@@ -44,19 +46,17 @@ function pickBaseVariant(variants) {
   return vs[0];
 }
 
-function getVariantFinalPrice(v) {
-  const price = toNum(v?.price);
-  const newPrice = toNum(v?.new_price);
-
-  // promo valid only if new_price > 0 and < price
-  if (newPrice > 0 && price > 0 && newPrice < price) return newPrice;
-  return price;
-}
-
-function getVariantHasDiscount(v) {
+function variantHasDiscount(v) {
   const price = toNum(v?.price);
   const newPrice = toNum(v?.new_price);
   return newPrice > 0 && price > 0 && newPrice < price;
+}
+
+function variantFinalPrice(v) {
+  const price = toNum(v?.price);
+  const newPrice = toNum(v?.new_price);
+  if (newPrice > 0 && price > 0 && newPrice < price) return newPrice;
+  return price;
 }
 
 export default function HomeProductCard({ product }) {
@@ -66,21 +66,28 @@ export default function HomeProductCard({ product }) {
   const id = product?.id ?? product?._id;
   const img = productImage(product);
 
-  const baseVariant = useMemo(() => pickBaseVariant(product?.variants), [product]);
+  const baseVariant = useMemo(
+    () => pickBaseVariant(product?.variants),
+    [product?.variants]
+  );
 
-  // ✅ Display label: "10 ml" (or any label you saved)
+  // ✅ Base size label (ex: "10 ml")
   const baseLabel = baseVariant?.label ? String(baseVariant.label) : "";
 
-  // ✅ Display price: base variant price (or product price if no variants)
+  // ✅ Base price logic:
+  // - if variants exist -> use baseVariant price/new_price
+  // - else -> use product.price/product.new_price
   const basePrice = baseVariant ? toNum(baseVariant.price) : toNum(product?.price);
-  const baseNewPrice = baseVariant ? toNum(baseVariant.new_price) : toNum(product?.new_price);
+  const baseNewPrice = baseVariant
+    ? toNum(baseVariant.new_price)
+    : toNum(product?.new_price);
 
   const hasDiscount = baseVariant
-    ? getVariantHasDiscount(baseVariant)
+    ? variantHasDiscount(baseVariant)
     : (baseNewPrice > 0 && basePrice > 0 && baseNewPrice < basePrice);
 
   const newDisplay = baseVariant
-    ? getVariantFinalPrice(baseVariant)
+    ? variantFinalPrice(baseVariant)
     : (hasDiscount ? baseNewPrice : basePrice);
 
   const oldDisplay = basePrice;
@@ -90,7 +97,8 @@ export default function HomeProductCard({ product }) {
       ? Math.round(((oldDisplay - newDisplay) / oldDisplay) * 100)
       : 0;
 
-  const isOutOfStock = !product?.stock || (baseVariant ? baseVariant.in_stock === false : false);
+  const isOutOfStock =
+    !product?.stock || (baseVariant ? baseVariant.in_stock === false : false);
 
   const addToCart = () => {
     const vId = baseVariant ? baseVariant.id : null;
@@ -114,7 +122,7 @@ export default function HomeProductCard({ product }) {
     dispatch(toggleWishlist(id));
   };
 
-  // categories
+  // categories chips
   const primary = (product?.category || "").trim();
   const extrasRaw = Array.isArray(product?.categories) ? product.categories : [];
   const extras = extrasRaw.filter(
@@ -167,13 +175,6 @@ export default function HomeProductCard({ product }) {
           {product?.name}
         </Link>
 
-        {/*  show the base size under the title (like your screenshot) */}
-        {baseLabel && (
-          <div className="hp-variant-mini" style={{ marginTop: 4, fontSize: 13, color: "#6b7280" }}>
-            {baseLabel}
-          </div>
-        )}
-
         {chips.length > 0 && (
           <div className="mt-1 d-flex flex-wrap" style={{ gap: 6 }}>
             {chips.map((c) => {
@@ -194,13 +195,31 @@ export default function HomeProductCard({ product }) {
           </div>
         )}
 
-        <div className="hp-price-wrap">
+        {/* ✅ PRICE + BASE SIZE beside price */}
+        <div
+          className="hp-price-wrap"
+          style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}
+        >
           {hasDiscount && (
             <span className="hp-price-old">{oldDisplay.toFixed(2)} MAD</span>
           )}
+
           <span className={hasDiscount ? "hp-price-new hp-price-new--promo" : "hp-price-new"}>
             {newDisplay.toFixed(2)} MAD
           </span>
+
+          {baseLabel && (
+            <span
+              className="hp-price-variant"
+              style={{
+                fontSize: 13,
+                color: "#6b7280",
+                whiteSpace: "nowrap",
+              }}
+            >
+              · {baseLabel}
+            </span>
+          )}
         </div>
       </div>
     </article>
