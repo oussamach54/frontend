@@ -167,7 +167,7 @@ export default function HomeProductCard({ product }) {
           {product?.name}
         </Link>
 
-        {/* ✅ show the base size under the title (like your screenshot) */}
+        {/*  show the base size under the title (like your screenshot) */}
         {baseLabel && (
           <div className="hp-variant-mini" style={{ marginTop: 4, fontSize: 13, color: "#6b7280" }}>
             {baseLabel}
