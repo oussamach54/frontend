@@ -1,59 +1,75 @@
 // src/pages/ProductsListPage.js
 import React, { useEffect, useMemo, useState } from "react";
 import { Container, Row, Col, Spinner, Alert, Form } from "react-bootstrap";
+import { useLocation } from "react-router-dom";
 import api from "../api";
 import HomeProductCard from "../components/HomeProductCard";
 import "../components/HomeProducts.css";
 
 const CATS = [
-  { key: "face",              label: "VISAGE" },
-  { key: "lips",              label: "LÈVRES" },
-  { key: "eyes",              label: "YEUX" },
-  { key: "eyebrow",           label: "SOURCILS" },
-  { key: "hair",              label: "CHEVEUX" },
-  { key: "body",              label: "CORPS" },
-  { key: "packs",             label: "PACKS" },
-  { key: "acne",              label: "ACNÉ" },
-  { key: "hyper_pigmentation",label: "HYPER PIGMENTATION" },
-  { key: "brightening",       label: "ÉCLAIRCISSEMENT" },
-  { key: "dry_skin",          label: "PEAU SÈCHE" },
-  { key: "combination_oily",  label: "PEAU MIXTE/GRASSE" },
-  { key: "other",             label: "AUTRES" },
+  { key: "face", label: "VISAGE" },
+  { key: "lips", label: "LÈVRES" },
+  { key: "eyes", label: "YEUX" },
+  { key: "eyebrow", label: "SOURCILS" },
+  { key: "hair", label: "CHEVEUX" },
+  { key: "body", label: "CORPS" },
+  { key: "packs", label: "PACKS" },
+  { key: "acne", label: "ACNÉ" },
+  { key: "hyper_pigmentation", label: "HYPER PIGMENTATION" },
+  { key: "brightening", label: "ÉCLAIRCISSEMENT" },
+  { key: "dry_skin", label: "PEAU SÈCHE" },
+  { key: "combination_oily", label: "PEAU MIXTE/GRASSE" },
+  { key: "other", label: "AUTRES" },
 ];
 
 export default function ProductsListPage() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
-  const [items, setItems]     = useState([]);
+  const location = useLocation();
 
-  const [q, setQ]         = useState("");
-  const [cat, setCat]     = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [items, setItems] = useState([]);
+
+  const [q, setQ] = useState("");
+  const [cat, setCat] = useState("");
   const [brand, setBrand] = useState("");
 
-  // -------- Read query string (brand, category/type, search or searchTerm) ------
+  /* =========================================
+     RESTORE SCROLL WHEN RETURNING
+  ========================================= */
   useEffect(() => {
-    const p = new URLSearchParams(window.location.search);
+    const savedScroll = sessionStorage.getItem("adminProductScroll");
+    if (savedScroll) {
+      setTimeout(() => {
+        window.scrollTo(0, Number(savedScroll));
+      }, 200);
+    }
+  }, []);
+  /* ========================================= */
+
+  useEffect(() => {
+    const p = new URLSearchParams(location.search);
+
     const b = p.get("brand") || "";
     const c = (p.get("category") || p.get("type") || "").toLowerCase();
     const s = p.get("search") || p.get("searchTerm") || "";
+
     setBrand(b);
     setCat(c);
     setQ(s);
-  }, []);
-  // ---------------------------------------------------------------------------
+  }, [location.search]);
 
-  // Garder l’URL synchronisée quand l’utilisateur tape / change les filtres
   useEffect(() => {
     const p = new URLSearchParams();
     if (brand) p.set("brand", brand);
-    if (cat)   p.set("type", cat); // on garde ?type= pour la catégorie
-    if (q)     p.set("search", q);
+    if (cat) p.set("type", cat);
+    if (q) p.set("search", q);
+
     const qs = p.toString();
     const url = qs ? `/products?${qs}` : "/products";
+
     window.history.replaceState(null, "", url);
   }, [brand, cat, q]);
 
-  // Fetch serveur – on ne filtre par marque que côté backend
   useEffect(() => {
     let alive = true;
     setLoading(true);
@@ -65,6 +81,7 @@ export default function ProductsListPage() {
         if (brand) params.brand = brand;
 
         const { data } = await api.get("/products/", { params });
+
         if (!alive) return;
         setItems(Array.isArray(data) ? data : []);
       } catch (e) {
@@ -78,9 +95,8 @@ export default function ProductsListPage() {
     return () => {
       alive = false;
     };
-  }, [brand]); // pas de filtre cat/q côté API
+  }, [brand]);
 
-  // Filtre final côté client (catégorie + recherche texte)
   const filtered = useMemo(() => {
     const s = (q || "").trim().toLowerCase();
     const selected = (cat || "").toLowerCase();
@@ -107,6 +123,7 @@ export default function ProductsListPage() {
         <Col>
           <h2 className="m-0 products-title">Tous les produits</h2>
         </Col>
+
         <Col md="6">
           <Form.Control
             className="products-search"
@@ -117,14 +134,6 @@ export default function ProductsListPage() {
         </Col>
       </Row>
 
-      <div className="mb-2">
-        {brand ? (
-          <small className="text-muted">
-            Marque sélectionnée : <b>{brand}</b>
-          </small>
-        ) : null}
-      </div>
-
       <div className="mb-3 d-flex flex-wrap gap-2">
         <button
           type="button"
@@ -133,6 +142,7 @@ export default function ProductsListPage() {
         >
           Tous
         </button>
+
         {CATS.map(({ key, label }) => (
           <button
             key={key}
@@ -150,6 +160,7 @@ export default function ProductsListPage() {
           <Spinner animation="border" />
         </div>
       )}
+
       {error && <Alert variant="danger">{error}</Alert>}
 
       {!loading && !error && (

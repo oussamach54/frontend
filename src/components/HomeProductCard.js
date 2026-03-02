@@ -32,7 +32,6 @@ function pickBaseVariant(variants) {
   const vs = Array.isArray(variants) ? variants.filter(Boolean) : [];
   if (!vs.length) return null;
 
-  // Prefer smallest size_ml if available
   const withSize = vs.filter(
     (v) => v.size_ml !== null && v.size_ml !== undefined && toNum(v.size_ml) > 0
   );
@@ -41,7 +40,6 @@ function pickBaseVariant(variants) {
     return withSize[0];
   }
 
-  // Fallback: cheapest price
   vs.sort((a, b) => toNum(a.price) - toNum(b.price));
   return vs[0];
 }
@@ -71,12 +69,8 @@ export default function HomeProductCard({ product }) {
     [product?.variants]
   );
 
-  // ✅ Base size label (ex: "10 ml")
   const baseLabel = baseVariant?.label ? String(baseVariant.label) : "";
 
-  // ✅ Base price logic:
-  // - if variants exist -> use baseVariant price/new_price
-  // - else -> use product.price/product.new_price
   const basePrice = baseVariant ? toNum(baseVariant.price) : toNum(product?.price);
   const baseNewPrice = baseVariant
     ? toNum(baseVariant.new_price)
@@ -122,7 +116,10 @@ export default function HomeProductCard({ product }) {
     dispatch(toggleWishlist(id));
   };
 
-  // categories chips
+  const saveScroll = () => {
+    sessionStorage.setItem("adminProductScroll", window.scrollY);
+  };
+
   const primary = (product?.category || "").trim();
   const extrasRaw = Array.isArray(product?.categories) ? product.categories : [];
   const extras = extrasRaw.filter(
@@ -140,7 +137,12 @@ export default function HomeProductCard({ product }) {
       )}
 
       <div className="hp-media-wrap">
-        <Link to={`/product/${id}/`} className="hp-media" aria-label={product?.name}>
+        <Link
+          to={`/product/${id}/`}
+          onClick={saveScroll}
+          className="hp-media"
+          aria-label={product?.name}
+        >
           <img src={img} alt={product?.name} />
         </Link>
 
@@ -154,7 +156,12 @@ export default function HomeProductCard({ product }) {
             <i className="fas fa-heart" />
           </button>
 
-          <Link className="hp-action-square" to={`/product/${id}/`} title="Voir le produit">
+          <Link
+            className="hp-action-square"
+            to={`/product/${id}/`}
+            onClick={saveScroll}
+            title="Voir le produit"
+          >
             <i className="fas fa-eye" />
           </Link>
         </div>
@@ -171,7 +178,11 @@ export default function HomeProductCard({ product }) {
       </div>
 
       <div className="hp-body">
-        <Link to={`/product/${id}/`} className="hp-title">
+        <Link
+          to={`/product/${id}/`}
+          onClick={saveScroll}
+          className="hp-title"
+        >
           {product?.name}
         </Link>
 
@@ -195,7 +206,6 @@ export default function HomeProductCard({ product }) {
           </div>
         )}
 
-        {/* ✅ PRICE + BASE SIZE beside price */}
         <div
           className="hp-price-wrap"
           style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}

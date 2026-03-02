@@ -47,6 +47,7 @@ function ProductDetailsPage({ history, match }) {
   const { items: wishlistItems = [] } = useSelector((s) => s.wishlist || {});
 
   const pid = product?.id;
+
   const inWishlist = pid
     ? wishlistItems.some((w) => (w.product?.id ?? w.id ?? w._id) === pid)
     : false;
@@ -82,7 +83,6 @@ function ProductDetailsPage({ history, match }) {
     }
   }, [variants, hasDiscount, promoVariantId, variantId]);
 
-  // ✅ promo per selected variant
   const variantHasPromo =
     activeVariant &&
     activeVariant.new_price != null &&
@@ -180,12 +180,9 @@ function ProductDetailsPage({ history, match }) {
       </Modal>
 
       {loading && (
-        <span style={{ display: "flex" }}>
-          <h5>Getting Product Details</h5>
-          <span className="ml-2">
-            <Spinner animation="border" />
-          </span>
-        </span>
+        <div className="d-flex justify-content-center py-5">
+          <Spinner animation="border" />
+        </div>
       )}
 
       {error ? (
@@ -211,6 +208,20 @@ function ProductDetailsPage({ history, match }) {
             <Col lg={6}>
               <div className="pd-card mb-3">
                 <h2 className="pd-title">{product?.name}</h2>
+
+                {/* ✅ ONLY CHANGE: Go back button (admin only) */}
+                {userInfo && userInfo.admin && (
+                  <div className="mb-3">
+                    <Button
+  variant="outline-secondary"
+  size="sm"
+  onClick={() => history.push("/products")}
+>
+  ⬅️ Go Back To List
+</Button>
+                  </div>
+                )}
+                {/* ✅ END ONLY CHANGE */}
 
                 <div className="pd-subtle mb-3">
                   Catégorie(s)&nbsp;:
@@ -325,7 +336,12 @@ function ProductDetailsPage({ history, match }) {
                 <div className="mb-3">
                   <div className="pd-subtle mb-2">Quantité</div>
                   <div className="pd-qty">
-                    <button type="button" className="btn" onClick={minus} aria-label="minus">
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={minus}
+                      aria-label="minus"
+                    >
                       &minus;
                     </button>
                     <input
@@ -336,25 +352,49 @@ function ProductDetailsPage({ history, match }) {
                           setQty(Math.max(1, Math.min(99, v)));
                       }}
                     />
-                    <button type="button" className="btn" onClick={plus} aria-label="plus">
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={plus}
+                      aria-label="plus"
+                    >
                       +
                     </button>
                   </div>
                 </div>
 
                 <div className="pd-actions mb-2">
-                  <button className="pd-btn-primary" onClick={addToCart} disabled={!product?.stock}>
+                  <button
+                    className="pd-btn-primary"
+                    onClick={addToCart}
+                    disabled={!product?.stock}
+                  >
                     <i className="fas fa-shopping-bag mr-2" /> Ajouter au panier
                   </button>
-                  <button onClick={handleToggleWishlist} className="pd-btn-outline">
-                    {inWishlist ? "💔 Retirer de ma wishlist" : "🤍 Ajouter à ma wishlist"}
+
+                  <button
+                    onClick={handleToggleWishlist}
+                    className="pd-btn-outline"
+                  >
+                    {inWishlist
+                      ? "💔 Retirer de ma wishlist"
+                      : "🤍 Ajouter à ma wishlist"}
                   </button>
+
                   {userInfo && userInfo.admin && (
                     <>
-                      <button className="pd-btn-outline" onClick={() => history.push(`/product-update/${product.id}/`)}>
+                      <button
+                        className="pd-btn-outline"
+                        onClick={() =>
+                          history.push(`/product-update/${product.id}/`)
+                        }
+                      >
                         Edit Product
                       </button>
-                      <button className="pd-btn-outline" onClick={() => setShow(true)}>
+                      <button
+                        className="pd-btn-outline"
+                        onClick={() => setShow(true)}
+                      >
                         Delete Product
                       </button>
                     </>
