@@ -6,7 +6,7 @@ import { toggleWishlist } from "../actions/wishlistActions";
 import { useCart } from "../cart/CartProvider";
 import { productImage } from "../utils/media";
 import "./HomeProducts.css";
-
+//
 const CAT_LABELS = {
   face: "VISAGE",
   lips: "LÈVRES",
@@ -234,4 +234,4 @@ export default function HomeProductCard({ product }) {
       </div>
     </article>
   );
-}
+} 
