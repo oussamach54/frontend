@@ -1,5 +1,5 @@
 // src/components/BrandBar.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Container, Dropdown, Form, InputGroup, Button } from "react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -7,28 +7,83 @@ import { logout } from "../actions/userActions";
 import api from "../api";
 import "./brandbar.css";
 
+/* =========================
+   SEARCH COMPONENT
+========================= */
 function BrandSearch() {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
   const history = useHistory();
+  const wrapperRef = useRef(null);
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setResults([]);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // 🔥 Improved Live Search
+  useEffect(() => {
+    const delay = setTimeout(async () => {
+      const term = q.trim();
+      if (term.length < 2) {
+        setResults([]);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const { data } = await api.get("/products/", {
+          params: { search: term },
+        });
+
+        // Client-side safety filter (if backend loose)
+        const filtered = (data || []).filter((p) =>
+          p.name?.toLowerCase().includes(term.toLowerCase())
+        );
+
+        setResults(filtered.slice(0, 6));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delay);
+  }, [q]);
 
   const submit = (e) => {
     e.preventDefault();
     const needle = q.trim();
     if (!needle) return;
-    history.push(`/products?search=${encodeURIComponent(needle.toLowerCase())}`);
+
+    history.push(`/products?search=${encodeURIComponent(needle)}`);
     setOpen(false);
+    setResults([]);
+  };
+
+  const goToProduct = (id) => {
+    history.push(`/product/${id}`);
+    setOpen(false);
+    setQ("");
+    setResults([]);
   };
 
   return (
-    <div className="brand-search">
+    <div className="brand-search" ref={wrapperRef}>
       {!open ? (
         <Button
           variant="link"
           className="icon-link p-0"
           onClick={() => setOpen(true)}
-          aria-label="Ouvrir la recherche"
-          title="Recherche"
         >
           <i className="fas fa-search" />
         </Button>
@@ -48,17 +103,57 @@ function BrandSearch() {
             <Button
               variant="link"
               className="brand-search-close"
-              onClick={() => setOpen(false)}
-              aria-label="Fermer la recherche"
+              onClick={() => {
+                setOpen(false);
+                setResults([]);
+              }}
             >
               <i className="fas fa-times" />
             </Button>
           </InputGroup>
+
+          {q.length >= 2 && (
+            <div className="brand-search-dropdown">
+              {loading && (
+                <div className="brand-search-loading">
+                  Recherche...
+                </div>
+              )}
+
+              {!loading && results.length === 0 && (
+                <div className="brand-search-empty">
+                  Aucun résultat
+                </div>
+              )}
+
+              {results.map((p) => (
+                <div
+                  key={p.id}
+                  className="brand-search-item"
+                  onClick={() => goToProduct(p.id)}
+                >
+                  <img src={p.image} alt={p.name} />
+                  <div>
+                    <div className="brand-search-name">
+                      {p.name}
+                    </div>
+                    <div className="brand-search-price">
+                      {p.price} dh
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Form>
       )}
     </div>
   );
 }
+
+/* =========================
+   MAIN BAR
+========================= */
 
 export default function BrandBar() {
   const dispatch = useDispatch();
@@ -80,7 +175,6 @@ export default function BrandBar() {
     window.location.reload();
   };
 
-  // sticky shadow on scroll
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -89,39 +183,13 @@ export default function BrandBar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // ✅ pending orders count for admin
-  const [pendingCount, setPendingCount] = useState(0);
-  useEffect(() => {
-    if (!userInfo?.admin) {
-      setPendingCount(0);
-      return;
-    }
-    let alive = true;
-    (async () => {
-      try {
-        const { data } = await api.get("/orders/admin/", {
-          params: { status: "pending" },
-        });
-        if (!alive) return;
-        setPendingCount(Array.isArray(data) ? data.length : 0);
-      } catch (e) {
-        if (!alive) return;
-        console.warn("Failed to load pending orders", e?.message || e);
-      }
-    })();
-    // you could poll here every X seconds if you want
-    return () => {
-      alive = false;
-    };
-  }, [userInfo]);
-
   return (
     <div className={`brandbar ${scrolled ? "scrolled" : ""}`}>
       <Container className="brandbar-inner">
         <div className="brandbar-left" />
 
         <div className="brandbar-logo logo-center">
-          <Link to="/" className="brand-logo-link" aria-label="Accueil">
+          <Link to="/" className="brand-logo-link">
             <img
               src="/brand/logov.png"
               alt="MiniGlowByshay"
@@ -131,91 +199,38 @@ export default function BrandBar() {
         </div>
 
         <div className="brandbar-icons">
-          {/* Search */}
           <BrandSearch />
 
-          {/* Wishlist */}
-          <Link
-            to="/wishlist"
-            title="Wishlist"
-            className="icon-link"
-            style={{ position: "relative" }}
-          >
+          <Link to="/wishlist" className="icon-link">
             <i className="fas fa-heart" />
             {wishCount > 0 && <span className="icon-badge">{wishCount}</span>}
           </Link>
 
-          {/* Cart */}
-          <Link
-            to="/cart"
-            title="Panier"
-            className="icon-link"
-            style={{ position: "relative" }}
-          >
+          <Link to="/cart" className="icon-link">
             <i className="fas fa-shopping-bag" />
             {cartCount > 0 && <span className="icon-badge">{cartCount}</span>}
           </Link>
 
-          {/* ✅ Admin: bell with pending orders */}
-          {userInfo?.admin && (
-            <Link
-              to="/admin/orders"
-              title="Nouvelles commandes"
-              className="icon-link"
-              style={{ position: "relative" }}
-            >
-              <i className="fas fa-bell" />
-              {pendingCount > 0 && (
-                <span className="icon-badge">{pendingCount}</span>
-              )}
-            </Link>
-          )}
-
-          {/* User menu */}
           {userInfo ? (
             <Dropdown align="end">
               <Dropdown.Toggle
                 as="button"
-                className="icon-link btn btn-link p-0 brand-user-toggle"
-                aria-label="Menu utilisateur"
+                className="icon-link btn btn-link p-0"
               >
                 <i className="fas fa-user" />
               </Dropdown.Toggle>
 
-              <Dropdown.Menu className="brand-user-menu">
-                <Dropdown.Header className="text-capitalize">
-                  {userInfo.username}
-                </Dropdown.Header>
-
-                {/* Client area */}
+              <Dropdown.Menu>
                 <Dropdown.Item as={Link} to="/account">
-                  Paramètres du compte
+                  Paramètres
                 </Dropdown.Item>
-                <Dropdown.Item as={Link} to="/orders">
-                  Mes commandes
-                </Dropdown.Item>
-
-                {/* Admin area */}
-                {userInfo.admin && (
-                  <>
-                    <Dropdown.Divider />
-                    <Dropdown.Item as={Link} to="/admin/orders">
-                      Commandes (Admin)
-                    </Dropdown.Item>
-                    <Dropdown.Item as={Link} to="/new-product/">
-                      Ajouter un produit
-                    </Dropdown.Item>
-                  </>
-                )}
-
-                <Dropdown.Divider />
                 <Dropdown.Item onClick={logoutHandler}>
                   Se déconnecter
                 </Dropdown.Item>
               </Dropdown.Menu>
             </Dropdown>
           ) : (
-            <Link to="/login" title="Se connecter" className="icon-link">
+            <Link to="/login" className="icon-link">
               <i className="fas fa-user" />
             </Link>
           )}

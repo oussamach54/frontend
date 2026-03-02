@@ -125,3 +125,66 @@
   -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 2px 12px rgba(0,0,0,.05);
 }
+/* ===== SEARCH DROPDOWN ===== */
+
+.brand-search {
+  position: relative;
+}
+
+.brand-search-dropdown {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  width: 340px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+  border: 1px solid rgba(0,0,0,0.05);
+  z-index: 9999;
+  max-height: 360px;
+  overflow-y: auto;
+  animation: fadeInSearch 0.18s ease;
+}
+
+.brand-search-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.brand-search-item:hover {
+  background: #fafafa;
+}
+
+.brand-search-item img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.brand-search-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.brand-search-price {
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.brand-search-loading,
+.brand-search-empty {
+  padding: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+}
+
+@keyframes fadeInSearch {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
