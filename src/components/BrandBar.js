@@ -1,4 +1,3 @@
-// src/components/BrandBar.js
 import React, { useEffect, useRef, useState } from "react";
 import { Container, Dropdown, Form, InputGroup, Button } from "react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
@@ -8,7 +7,7 @@ import api from "../api";
 import "./brandbar.css";
 
 /* =========================
-   SEARCH COMPONENT
+   SEARCH COMPONENT (IMPROVED)
 ========================= */
 function BrandSearch() {
   const [open, setOpen] = useState(false);
@@ -18,7 +17,6 @@ function BrandSearch() {
   const history = useHistory();
   const wrapperRef = useRef(null);
 
-  // Close when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -29,7 +27,6 @@ function BrandSearch() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 🔥 Improved Live Search
   useEffect(() => {
     const delay = setTimeout(async () => {
       const term = q.trim();
@@ -44,7 +41,6 @@ function BrandSearch() {
           params: { search: term },
         });
 
-        // Client-side safety filter (if backend loose)
         const filtered = (data || []).filter((p) =>
           p.name?.toLowerCase().includes(term.toLowerCase())
         );
@@ -64,7 +60,6 @@ function BrandSearch() {
     e.preventDefault();
     const needle = q.trim();
     if (!needle) return;
-
     history.push(`/products?search=${encodeURIComponent(needle)}`);
     setOpen(false);
     setResults([]);
@@ -80,11 +75,7 @@ function BrandSearch() {
   return (
     <div className="brand-search" ref={wrapperRef}>
       {!open ? (
-        <Button
-          variant="link"
-          className="icon-link p-0"
-          onClick={() => setOpen(true)}
-        >
+        <Button variant="link" className="icon-link p-0" onClick={() => setOpen(true)}>
           <i className="fas fa-search" />
         </Button>
       ) : (
@@ -97,12 +88,11 @@ function BrandSearch() {
               placeholder="Rechercher un produit…"
               className="brand-search-input"
             />
-            <Button type="submit" variant="dark" className="brand-search-btn">
+            <Button type="submit" variant="dark">
               <i className="fas fa-search" />
             </Button>
             <Button
               variant="link"
-              className="brand-search-close"
               onClick={() => {
                 setOpen(false);
                 setResults([]);
@@ -114,18 +104,10 @@ function BrandSearch() {
 
           {q.length >= 2 && (
             <div className="brand-search-dropdown">
-              {loading && (
-                <div className="brand-search-loading">
-                  Recherche...
-                </div>
-              )}
-
+              {loading && <div className="brand-search-loading">Recherche...</div>}
               {!loading && results.length === 0 && (
-                <div className="brand-search-empty">
-                  Aucun résultat
-                </div>
+                <div className="brand-search-empty">Aucun résultat</div>
               )}
-
               {results.map((p) => (
                 <div
                   key={p.id}
@@ -134,12 +116,8 @@ function BrandSearch() {
                 >
                   <img src={p.image} alt={p.name} />
                   <div>
-                    <div className="brand-search-name">
-                      {p.name}
-                    </div>
-                    <div className="brand-search-price">
-                      {p.price} dh
-                    </div>
+                    <div>{p.name}</div>
+                    <div>{p.price} dh</div>
                   </div>
                 </div>
               ))}
@@ -152,7 +130,7 @@ function BrandSearch() {
 }
 
 /* =========================
-   MAIN BAR
+   MAIN BAR (RESTORED)
 ========================= */
 
 export default function BrandBar() {
@@ -183,6 +161,38 @@ export default function BrandBar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // 🔔 ADMIN PENDING ORDERS
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (!userInfo?.admin) {
+      setPendingCount(0);
+      return;
+    }
+
+    let alive = true;
+
+    const loadPending = async () => {
+      try {
+        const { data } = await api.get("/orders/admin/", {
+          params: { status: "pending" },
+        });
+        if (!alive) return;
+        setPendingCount(Array.isArray(data) ? data.length : 0);
+      } catch (e) {
+        console.warn("Failed to load pending orders", e);
+      }
+    };
+
+    loadPending();
+    const interval = setInterval(loadPending, 15000);
+
+    return () => {
+      alive = false;
+      clearInterval(interval);
+    };
+  }, [userInfo]);
+
   return (
     <div className={`brandbar ${scrolled ? "scrolled" : ""}`}>
       <Container className="brandbar-inner">
@@ -191,39 +201,72 @@ export default function BrandBar() {
         <div className="brandbar-logo logo-center">
           <Link to="/" className="brand-logo-link">
             <img
-              src="/brand/logov.png"
-              alt="MiniGlowByshay"
-              className="brand-logo-img"
-            />
+  src="/brand/logov.png"
+  alt="MiniGlowByshay"
+  className="brand-logo-img"
+/>
           </Link>
         </div>
 
         <div className="brandbar-icons">
           <BrandSearch />
 
-          <Link to="/wishlist" className="icon-link">
+          <Link to="/wishlist" className="icon-link" style={{ position: "relative" }}>
             <i className="fas fa-heart" />
             {wishCount > 0 && <span className="icon-badge">{wishCount}</span>}
           </Link>
 
-          <Link to="/cart" className="icon-link">
+          <Link to="/cart" className="icon-link" style={{ position: "relative" }}>
             <i className="fas fa-shopping-bag" />
             {cartCount > 0 && <span className="icon-badge">{cartCount}</span>}
           </Link>
 
+          {/* 🔔 ADMIN BELL */}
+          {userInfo?.admin && (
+            <Link
+              to="/admin/orders"
+              className="icon-link"
+              style={{ position: "relative" }}
+            >
+              <i className="fas fa-bell" />
+              {pendingCount > 0 && (
+                <span className="icon-badge">{pendingCount}</span>
+              )}
+            </Link>
+          )}
+
           {userInfo ? (
             <Dropdown align="end">
-              <Dropdown.Toggle
-                as="button"
-                className="icon-link btn btn-link p-0"
-              >
+              <Dropdown.Toggle as="button" className="icon-link btn btn-link p-0">
                 <i className="fas fa-user" />
               </Dropdown.Toggle>
 
               <Dropdown.Menu>
+                <Dropdown.Header className="text-capitalize">
+                  {userInfo.username}
+                </Dropdown.Header>
+
                 <Dropdown.Item as={Link} to="/account">
-                  Paramètres
+                  Paramètres du compte
                 </Dropdown.Item>
+
+                <Dropdown.Item as={Link} to="/orders">
+                  Mes commandes
+                </Dropdown.Item>
+
+                {userInfo.admin && (
+                  <>
+                    <Dropdown.Divider />
+                    <Dropdown.Item as={Link} to="/admin/orders">
+                      Commandes (Admin)
+                    </Dropdown.Item>
+                    <Dropdown.Item as={Link} to="/new-product/">
+                      Ajouter un produit
+                    </Dropdown.Item>
+                  </>
+                )}
+
+                <Dropdown.Divider />
                 <Dropdown.Item onClick={logoutHandler}>
                   Se déconnecter
                 </Dropdown.Item>
