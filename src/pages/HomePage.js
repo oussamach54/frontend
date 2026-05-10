@@ -35,6 +35,11 @@ export default function HomePage() {
   const [loadingFav, setLoadingFav] = useState(true);
   const [errorFav, setErrorFav]     = useState(null);
 
+  // 🎨 maquillage
+  const [makeup, setMakeup]   = useState([]);
+  const [loadingMakeup, setLoadingMakeup] = useState(true);
+  const [errorMakeup, setErrorMakeup]     = useState(null);
+
   const banners = useMemo(
     () => [
       "/hero/banner1.jpg",
@@ -79,6 +84,28 @@ export default function HomePage() {
         setErrorFav(e?.response?.data?.detail || e.message);
       } finally {
         if (alive) setLoadingFav(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // 🎨 Produits maquillage
+  useEffect(() => {
+    let alive = true;
+    setLoadingMakeup(true);
+    setErrorMakeup(null);
+    (async () => {
+      try {
+        const { data } = await api.get("/products/", { params: { type: "makeup" } });
+        if (!alive) return;
+        setMakeup(Array.isArray(data) ? data.slice(0, 12) : []);
+      } catch (e) {
+        if (!alive) return;
+        setErrorMakeup(e?.response?.data?.detail || e.message);
+      } finally {
+        if (alive) setLoadingMakeup(false);
       }
     })();
     return () => {
@@ -164,6 +191,41 @@ export default function HomePage() {
           ) : (
             <div className="text-center text-muted py-5 font-sans">
               Aucun produit mis en avant pour le moment.
+            </div>
+          )
+        )}
+      </Container>
+
+      {/* 🎨 ===== Produits maquillage – carrousel horizontal ===== */}
+      <Container className="py-4">
+        <Row className="align-items-center mb-3">
+          <Col>
+            <h2 className="m-0 font-display fw-700">Nos produits de maquillage</h2>
+          </Col>
+          <Col className="text-right">
+            <Button variant="outline-secondary" size="sm" href="/products?type=makeup">
+              Voir tous les produits maquillage
+            </Button>
+          </Col>
+        </Row>
+
+        {loadingMakeup && (
+          <div className="d-flex justify-content-center py-4">
+            <Spinner animation="border" />
+          </div>
+        )}
+        {errorMakeup && <Alert variant="danger">{errorMakeup}</Alert>}
+
+        {!loadingMakeup && !errorMakeup && (
+          makeup.length ? (
+            <HScrollButtons step={280}>
+              {makeup.map((p) => (
+                <HomeProductCard key={p.id} product={p} />
+              ))}
+            </HScrollButtons>
+          ) : (
+            <div className="text-center text-muted py-4 font-sans">
+              Aucun produit de maquillage pour le moment.
             </div>
           )
         )}
