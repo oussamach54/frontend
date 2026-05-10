@@ -16,6 +16,7 @@ import { productImage } from "../utils/media";
 import "./ProductDetailsPage.css";
 
 const CATEGORY_LABELS = {
+  makeup: "Maquillage",
   face: "Visage",
   lips: "Lèvres",
   eyes: "Yeux",

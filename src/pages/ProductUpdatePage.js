@@ -8,6 +8,7 @@ import { UPDATE_PRODUCT_RESET } from "../constants";
 import Message from "../components/Message";
 
 const CATEGORY_OPTIONS = [
+  { value: "makeup", label: "Maquillage" },
   { value: "face", label: "Face" },
   { value: "lips", label: "Lips" },
   { value: "eyes", label: "Eyes" },

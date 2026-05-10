@@ -38,6 +38,7 @@ function NavBar() {
                   <NavDropdown.Item className="font-sans">Tous</NavDropdown.Item>
                 </LinkContainer>
                 <NavDropdown.Divider />
+                <LinkContainer to="/products?type=makeup"><NavDropdown.Item>Maquillage</NavDropdown.Item></LinkContainer>
                 <LinkContainer to="/products?type=face"><NavDropdown.Item>Visage</NavDropdown.Item></LinkContainer>
                 <LinkContainer to="/products?type=lips"><NavDropdown.Item>Lèvres</NavDropdown.Item></LinkContainer>
                 <LinkContainer to="/products?type=eyes"><NavDropdown.Item>Yeux</NavDropdown.Item></LinkContainer>

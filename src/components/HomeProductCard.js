@@ -8,6 +8,7 @@ import { productImage } from "../utils/media";
 import "./HomeProducts.css";
 //
 const CAT_LABELS = {
+  makeup: "MAQUILLAGE",
   face: "VISAGE",
   lips: "LÈVRES",
   eyes: "YEUX",

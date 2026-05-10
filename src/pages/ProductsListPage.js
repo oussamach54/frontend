@@ -7,6 +7,7 @@ import HomeProductCard from "../components/HomeProductCard";
 import "../components/HomeProducts.css";
 
 const CATS = [
+  { key: "makeup", label: "MAQUILLAGE" },
   { key: "face", label: "VISAGE" },
   { key: "lips", label: "LÈVRES" },
   { key: "eyes", label: "YEUX" },

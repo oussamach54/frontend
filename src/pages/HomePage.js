@@ -12,15 +12,16 @@ import SiteFooter from "../components/SiteFooter";
 import HScrollButtons from "../components/HScrollButtons";
 
 const CATS = [
-  { key: "face",    label: "VISAGE"   },
-  { key: "lips",    label: "LÈVRES"   },
-  { key: "eyes",    label: "YEUX"     },
-  { key: "eyebrow", label: "SOURCILS" },
-  { key: "hair",    label: "CHEVEUX"  },
+  { key: "makeup",  label: "MAQUILLAGE" },
+  { key: "face",    label: "VISAGE"     },
+  { key: "lips",    label: "LÈVRES"     },
+  { key: "eyes",    label: "YEUX"       },
+  { key: "eyebrow", label: "SOURCILS"   },
+  { key: "hair",    label: "CHEVEUX"    },
 ];
 
 export default function HomePage() {
-  const [tab, setTab]           = useState("face");
+  const [tab, setTab]           = useState("makeup");
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
   const [products, setProducts] = useState([]);
@@ -204,7 +205,7 @@ export default function HomePage() {
           <Nav
             variant="tabs"
             activeKey={tab}
-            onSelect={(k) => setTab(k || "face")}
+            onSelect={(k) => setTab(k || "makeup")}
             className="justify-content-center"
           >
             {CATS.map(({ key, label }) => (
