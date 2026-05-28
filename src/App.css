@@ -279,6 +279,12 @@ a:focus-visible, button:focus-visible, .dropdown-toggle:focus-visible{
   transform:translateY(-1px);
 }
 
+.pd .pd-variants .pd-variant-pill.is-active{
+  background:#ed7ea9 !important;
+  border-color:#f178b4 !important;
+  color:#fff !important;
+  box-shadow:none !important;
+}
 .pd .pd-variants .pd-variant-pill[aria-pressed="true"]{
   background:#2f2f2f !important;
   border-color:#2f2f2f !important;
