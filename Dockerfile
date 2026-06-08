@@ -20,6 +20,9 @@ COPY . .
 ARG REACT_APP_API_URL
 ENV REACT_APP_API_URL=${REACT_APP_API_URL}
 
+# Hna l'7el: n-7eddo l'RAM l'Node.js bach ma-ytplantach l'build (OOM Fix)
+ENV NODE_OPTIONS="--openssl-legacy-provider --max-old-space-size=512"
+
 RUN npm run build
 
 # ===========================
@@ -42,8 +45,7 @@ printf 'server {\n\
         add_header Content-Type text/plain;\n\
     }\n\
     gzip on;\n\
-    gzip_types text/plain text/css application/javascript application/json image/svg+xml;\n\
-}\n' > /etc/nginx/conf.d/default.conf
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml;\n}\n' > /etc/nginx/conf.d/default.conf
 
 COPY --from=build /app/build /usr/share/nginx/html
 
