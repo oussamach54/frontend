@@ -27,10 +27,10 @@ RUN npm run build
 # ===========================
 FROM nginx:alpine
 
-# SPA nginx config supporting both /health and /health/
+# SPA nginx config supporting both /health and /health/ on PORT 3000
 RUN rm -f /etc/nginx/conf.d/default.conf && \
 printf 'server {\n\
-    listen 80;\n\
+    listen 3000;\n\
     server_name _;\n\
     root /usr/share/nginx/html;\n\
     index index.html;\n\
@@ -47,5 +47,5 @@ printf 'server {\n\
 
 COPY --from=build /app/build /usr/share/nginx/html
 
-EXPOSE 80
+EXPOSE 3000
 CMD ["nginx", "-g", "daemon off;"]
