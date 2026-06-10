@@ -3,7 +3,6 @@ import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { toggleWishlist } from "../actions/wishlistActions";
-import { useCart } from "../cart/CartProvider";
 import { productImage } from "../utils/media";
 import "./HomeProducts.css";
 //
@@ -60,7 +59,6 @@ function variantFinalPrice(v) {
 
 export default function HomeProductCard({ product }) {
   const dispatch = useDispatch();
-  const cart = useCart();
 
   const id = product?.id ?? product?._id;
   const img = productImage(product);
@@ -91,26 +89,6 @@ export default function HomeProductCard({ product }) {
     hasDiscount && oldDisplay > 0
       ? Math.round(((oldDisplay - newDisplay) / oldDisplay) * 100)
       : 0;
-
-  const isOutOfStock =
-    !product?.stock || (baseVariant ? baseVariant.in_stock === false : false);
-
-  const addToCart = () => {
-    const vId = baseVariant ? baseVariant.id : null;
-    const vLabel = baseVariant ? baseVariant.label : "";
-
-    cart.addItem(
-      {
-        id,
-        name: product?.name + (vLabel ? ` (${vLabel})` : ""),
-        price: newDisplay,
-        image: img,
-        variantId: vId,
-        variantLabel: vLabel,
-      },
-      1
-    );
-  };
 
   const addToWishlist = (e) => {
     e.preventDefault();
@@ -167,15 +145,15 @@ export default function HomeProductCard({ product }) {
           </Link>
         </div>
 
-        <button
-          type="button"
-          className={`hp-addbar ${isOutOfStock ? "is-disabled" : ""}`}
-          onClick={isOutOfStock ? undefined : addToCart}
-          disabled={isOutOfStock}
+        <Link
+          to={`/product/${id}/`}
+          className="hp-addbar"
+          onClick={saveScroll}
+          title="Voir les détails du produit"
         >
-          <i className="fas fa-shopping-bag mr-2" />
-          {isOutOfStock ? "RUPTURE DE STOCK" : "AJOUTER AU PANIER"}
-        </button>
+          <i className="fas fa-info-circle mr-2" />
+          Voir les détails
+        </Link>
       </div>
 
       <div className="hp-body">
