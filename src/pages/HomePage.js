@@ -30,6 +30,10 @@ export default function HomePage() {
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [errorFeatured, setErrorFeatured]     = useState(null);
 
+  const [makeupProducts, setMakeupProducts] = useState([]);
+  const [loadingMakeup, setLoadingMakeup] = useState(true);
+  const [errorMakeup, setErrorMakeup] = useState(null);
+
   // ⭐ favoris
   const [favorites, setFavorites]   = useState([]);
   const [loadingFav, setLoadingFav] = useState(true);
@@ -61,6 +65,28 @@ export default function HomePage() {
     })();
     return () => {
       ok = false;
+    };
+  }, []);
+
+  // Produits maquillage
+  useEffect(() => {
+    let alive = true;
+    setLoadingMakeup(true);
+    setErrorMakeup(null);
+    (async () => {
+      try {
+        const { data } = await api.get("/products/", { params: { type: "makeup" } });
+        if (!alive) return;
+        setMakeupProducts(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!alive) return;
+        setErrorMakeup(e?.response?.data?.detail || e.message);
+      } finally {
+        if (alive) setLoadingMakeup(false);
+      }
+    })();
+    return () => {
+      alive = false;
     };
   }, []);
 
@@ -164,6 +190,36 @@ export default function HomePage() {
           ) : (
             <div className="text-center text-muted py-5 font-sans">
               Aucun produit mis en avant pour le moment.
+            </div>
+          )
+        )}
+      </Container>
+
+      {/* ===== Nos produits maquillage ===== */}
+      <Container className="pb-4">
+        <Row className="align-items-center mb-3">
+          <Col>
+            <h2 className="m-0 font-display fw-700">Nos produits maquillage</h2>
+          </Col>
+        </Row>
+
+        {loadingMakeup && (
+          <div className="d-flex justify-content-center py-4">
+            <Spinner animation="border" />
+          </div>
+        )}
+        {errorMakeup && <Alert variant="danger">{errorMakeup}</Alert>}
+
+        {!loadingMakeup && !errorMakeup && (
+          makeupProducts.length ? (
+            <HScrollButtons step={280}>
+              {makeupProducts.map((p) => (
+                <HomeProductCard key={p.id} product={p} />
+              ))}
+            </HScrollButtons>
+          ) : (
+            <div className="text-center text-muted py-4 font-sans">
+              Aucun produit maquillage disponible pour le moment.
             </div>
           )
         )}
