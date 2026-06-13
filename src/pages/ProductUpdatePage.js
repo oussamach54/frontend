@@ -164,7 +164,7 @@ export default function ProductUpdatePage({ match }) {
   if (success) {
     alert("Product successfully updated.");
     dispatch({ type: UPDATE_PRODUCT_RESET });
-    history.push(`/product/${productId}/`);
+    history.replace("/products");
   }
 
   if (userInfo && tokenError === "Request failed with status code 401") {
@@ -416,3 +416,4 @@ export default function ProductUpdatePage({ match }) {
     </div>
   );
 }
+
