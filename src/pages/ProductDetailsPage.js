@@ -386,9 +386,10 @@ function ProductDetailsPage({ history, match }) {
                     <>
                       <button
                         className="pd-btn-outline"
-                        onClick={() =>
-                          history.push(`/product-update/${product.id}/`)
-                        }
+                        onClick={() => {
+                          sessionStorage.setItem("adminProductScroll", String(window.scrollY || 0));
+                          history.push(`/product-update/${product.id}/`);
+                        }}
                       >
                         Edit Product
                       </button>
