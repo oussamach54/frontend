@@ -67,6 +67,19 @@ function ProductDetailsPage({ history, match }) {
   const hasDiscount = !!product?.has_discount && !!promoVariantId;
   const percent = Number(product?.discount_percent || 0);
 
+  // ✅ NEW: unified promo helpers (matches ProductCard logic)
+  const hasVariantPromo =
+    activeVariant &&
+    activeVariant.new_price != null &&
+    Number(activeVariant.new_price) > 0 &&
+    Number(activeVariant.new_price) < Number(activeVariant.price);
+
+  const hasBasePromo =
+    product?.new_price != null &&
+    Number(product?.new_price) > 0 &&
+    Number(product?.price) > 0 &&
+    Number(product?.new_price) < Number(product?.price);
+
   useEffect(() => {
     if (!variants.length) return;
 
@@ -84,18 +97,19 @@ function ProductDetailsPage({ history, match }) {
     }
   }, [variants, hasDiscount, promoVariantId, variantId]);
 
-  const variantHasPromo =
-    activeVariant &&
-    activeVariant.new_price != null &&
-    Number(activeVariant.new_price) > 0 &&
-    Number(activeVariant.new_price) < Number(activeVariant.price);
-
+  // ✅ NEW: unitPrice supports both variant promo and base product promo
   const unitPrice = (() => {
+    // 1️⃣ Variant promo has priority
+    if (activeVariant && hasVariantPromo) {
+      return Number(activeVariant.new_price);
+    }
     if (activeVariant) {
-      if (variantHasPromo) return Number(activeVariant.new_price);
       return Number(activeVariant.price || 0);
     }
-    if (hasDiscount) return Number(product?.new_price || product?.price || 0);
+    // 2️⃣ Base product promo
+    if (hasBasePromo) {
+      return Number(product.new_price);
+    }
     return Number(product?.price || 0);
   })();
 
@@ -195,7 +209,7 @@ function ProductDetailsPage({ history, match }) {
               <div className="pd-media">
                 <div className="pd-media-frame">
                   <img src={productImage(product)} alt={product?.name} />
-                  {(variantHasPromo ||
+                  {(hasVariantPromo || hasBasePromo ||
                     (hasDiscount &&
                       String(variantId) === String(promoVariantId))) && (
                     <span className="pd-sale-badge pd-sale-badge--media">
@@ -210,19 +224,17 @@ function ProductDetailsPage({ history, match }) {
               <div className="pd-card mb-3">
                 <h2 className="pd-title">{product?.name}</h2>
 
-                {/* ✅ ONLY CHANGE: Go back button (admin only) */}
                 {userInfo && userInfo.admin && (
                   <div className="mb-3">
                     <Button
-  variant="outline-secondary"
-  size="sm"
-  onClick={() => history.push("/products")}
->
-  ⬅️ Go Back To List
-</Button>
+                      variant="outline-secondary"
+                      size="sm"
+                      onClick={() => history.push("/products")}
+                    >
+                      ⬅️ Go Back To List
+                    </Button>
                   </div>
                 )}
-                {/* ✅ END ONLY CHANGE */}
 
                 <div className="pd-subtle mb-3">
                   Catégorie(s)&nbsp;:
@@ -300,8 +312,9 @@ function ProductDetailsPage({ history, match }) {
                 <div className="pd-price mb-3">
                   <div className="pd-price-label pd-subtle">Prix</div>
 
+                  {/* ✅ NEW: unified price display (variant promo → base promo → normal) */}
                   <div className="pd-price-main">
-                    {variantHasPromo ? (
+                    {activeVariant && hasVariantPromo ? (
                       <>
                         <span className="pd-price-old">
                           {fmtMAD(activeVariant.price)}
@@ -310,16 +323,13 @@ function ProductDetailsPage({ history, match }) {
                           {fmtMAD(activeVariant.new_price)}
                         </span>
                       </>
-                    ) : hasDiscount &&
-                      activeVariant &&
-                      String(activeVariant.id) === String(promoVariantId) ? (
+                    ) : hasBasePromo ? (
                       <>
                         <span className="pd-price-old">
-                          {fmtMAD(product.promo_variant_old_price)}
+                          {fmtMAD(product.price)}
                         </span>
-                        <span className="pd-sale-badge">-{percent}%</span>
                         <span className="pd-price-new pd-price-new--promo">
-                          {fmtMAD(product.promo_variant_new_price)}
+                          {fmtMAD(product.new_price)}
                         </span>
                       </>
                     ) : (
