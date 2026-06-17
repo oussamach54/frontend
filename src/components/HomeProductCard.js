@@ -167,15 +167,14 @@ export default function HomeProductCard({ product }) {
           </Link>
         </div>
 
-        <button
-          type="button"
-          className={`hp-addbar ${isOutOfStock ? "is-disabled" : ""}`}
-          onClick={isOutOfStock ? undefined : addToCart}
-          disabled={isOutOfStock}
-        >
-          <i className="fas fa-shopping-bag mr-2" />
-          {isOutOfStock ? "RUPTURE DE STOCK" : "AJOUTER AU PANIER"}
-        </button>
+       <Link
+  to={`/product/${id}/`}
+  onClick={saveScroll}
+  className="hp-addbar"
+>
+  <i className="fas fa-eye mr-2" />
+  VOIR LE PRODUIT
+</Link>
       </div>
 
       <div className="hp-body">
