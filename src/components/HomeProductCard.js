@@ -61,7 +61,9 @@ export default function HomeProductCard({ product }) {
   const dispatch = useDispatch();
 
   const id = product?.id ?? product?._id;
-  const isOutOfStock = !product?.stock || (product?.variants?.some((v) => v?.in_stock === false) ?? false);
+  const hasInStockVariant = product?.variants?.some((v) => v?.in_stock === true) ?? false;
+  const hasStock = Boolean(product?.stock) || hasInStockVariant;
+  const isOutOfStock = !hasStock;
   const img = productImage(product);
 
   const baseVariant = useMemo(
